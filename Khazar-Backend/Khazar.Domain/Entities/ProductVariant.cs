@@ -1,4 +1,5 @@
 using Khazar.Domain.Common;
+using Khazar.Domain.Exceptions;
 
 namespace Khazar.Domain.Entities;
 
@@ -42,8 +43,7 @@ public class ProductVariant : BaseEntity
     {
         Guard.Positive(quantity, nameof(quantity));
         if (quantity > StockQuantity)
-            throw new DomainException(
-                $"Insufficient stock for '{SKU}'. Requested: {quantity}, available: {StockQuantity}.");
+            throw new InsufficientStockException(SKU);
 
         StockQuantity -= quantity;
         MarkUpdated();

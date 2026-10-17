@@ -1,4 +1,5 @@
 using Khazar.Domain.Common;
+using Khazar.Domain.Exceptions;
 
 namespace Khazar.Domain.Entities;
 

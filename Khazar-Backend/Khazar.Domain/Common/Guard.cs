@@ -1,3 +1,5 @@
+using Khazar.Domain.Exceptions;
+
 namespace Khazar.Domain.Common;
 
 internal static class Guard

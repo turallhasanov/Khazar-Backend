@@ -9,3 +9,4 @@ C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Domain\obj\Debug\net8.
 C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Domain\obj\Debug\net8.0\refint\Khazar.Domain.dll
 C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Domain\obj\Debug\net8.0\Khazar.Domain.pdb
 C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Domain\obj\Debug\net8.0\ref\Khazar.Domain.dll
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Domain\obj\Debug\net8.0\Khazar.Domain.sourcelink.json
