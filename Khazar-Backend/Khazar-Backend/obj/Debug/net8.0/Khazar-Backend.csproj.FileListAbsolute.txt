@@ -33,3 +33,4 @@ C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar-Backend\obj\Debug\net8
 C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar-Backend\obj\Debug\net8.0\Khazar-Backend.pdb
 C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar-Backend\obj\Debug\net8.0\Khazar-Backend.genruntimeconfig.cache
 C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar-Backend\obj\Debug\net8.0\ref\Khazar-Backend.dll
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar-Backend\obj\Debug\net8.0\Khazar-Backend.sourcelink.json

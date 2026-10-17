@@ -1,0 +1,16 @@
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\bin\Debug\net8.0\Khazar.Application.deps.json
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\bin\Debug\net8.0\Khazar.Application.dll
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\bin\Debug\net8.0\Khazar.Application.pdb
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\bin\Debug\net8.0\Khazar.Domain.dll
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\bin\Debug\net8.0\Khazar.Domain.pdb
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\obj\Debug\net8.0\Khazar.Application.csproj.AssemblyReference.cache
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\obj\Debug\net8.0\Khazar.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\obj\Debug\net8.0\Khazar.Application.AssemblyInfoInputs.cache
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\obj\Debug\net8.0\Khazar.Application.AssemblyInfo.cs
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\obj\Debug\net8.0\Khazar.Application.csproj.CoreCompileInputs.cache
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\obj\Debug\net8.0\Khazar.Application.sourcelink.json
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\obj\Debug\net8.0\Khazar.A.B0A91C72.Up2Date
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\obj\Debug\net8.0\Khazar.Application.dll
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\obj\Debug\net8.0\refint\Khazar.Application.dll
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\obj\Debug\net8.0\Khazar.Application.pdb
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.Application\obj\Debug\net8.0\ref\Khazar.Application.dll
