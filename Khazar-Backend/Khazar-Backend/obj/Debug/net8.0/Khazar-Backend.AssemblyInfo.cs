@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Khazar-Backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f9657768f20ecee5f7f5238ce99a1512aeb98374")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+399a4c05e9b6621428b12e9ff0ecc388fb9c9c97")]
 [assembly: System.Reflection.AssemblyProductAttribute("Khazar-Backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Khazar-Backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

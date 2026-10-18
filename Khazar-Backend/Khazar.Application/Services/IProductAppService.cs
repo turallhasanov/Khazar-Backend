@@ -10,4 +10,7 @@ public interface IProductAppService
     Task<ProductDetailDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<ProductDetailDto?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns the products in a category; an unknown or blank category yields an empty list.</summary>
+    Task<IReadOnlyList<ProductListDto>> GetByCategoryAsync(string category, CancellationToken cancellationToken = default);
 }
