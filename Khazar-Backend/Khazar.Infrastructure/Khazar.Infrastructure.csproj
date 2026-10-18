@@ -8,9 +8,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
-  <!-- Provider-agnostic EF Core; the database provider package is added when the connection is wired up. -->
+  <!-- SQL Server provider (brings in EF Core Relational). -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.32" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.32" />
   </ItemGroup>
 
   <ItemGroup>
