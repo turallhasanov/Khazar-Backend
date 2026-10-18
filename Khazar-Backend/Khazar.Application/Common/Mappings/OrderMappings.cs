@@ -21,7 +21,7 @@ public static class OrderMappings
         CreatedAt = order.CreatedAt,
         CustomerName = order.CustomerName,
         CustomerEmail = order.CustomerEmail,
-        ShippingAddress = order.ShippingAddress,
+        ShippingAddress = order.ShippingAddress.ToString(),
         Currency = DefaultCurrency,
         TotalAmount = order.TotalAmount,
         ItemCount = order.Items.Sum(i => i.Quantity),

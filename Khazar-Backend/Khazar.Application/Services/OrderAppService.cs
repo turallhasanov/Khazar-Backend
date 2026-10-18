@@ -21,7 +21,7 @@ public sealed class OrderAppService(
         var order = new Order(
             dto.Customer.ToFullName(),
             dto.Customer.Email,
-            dto.Shipping.ToAddress().ToString());
+            dto.Shipping.ToAddress());
 
         // Several lines may reference the same product; load each product once.
         var products = new Dictionary<Guid, Product>();

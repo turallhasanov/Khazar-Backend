@@ -1,6 +1,7 @@
 using Khazar.Domain.Common;
 using Khazar.Domain.Enums;
 using Khazar.Domain.Exceptions;
+using Khazar.Domain.ValueObjects;
 
 namespace Khazar.Domain.Entities;
 
@@ -19,19 +20,19 @@ public class Order : BaseEntity
     public string CustomerEmail { get; private set; } = default!;
     public decimal TotalAmount { get; private set; }
     public OrderStatus Status { get; private set; }
-    public string ShippingAddress { get; private set; } = default!;
+    public Address ShippingAddress { get; private set; } = default!;
 
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
 
     // Required by ORMs
     private Order() { }
 
-    public Order(string customerName, string customerEmail, string shippingAddress)
+    public Order(string customerName, string customerEmail, Address shippingAddress)
     {
         OrderNumber = GenerateOrderNumber();
         CustomerName = Guard.NotEmpty(customerName, nameof(CustomerName));
         CustomerEmail = NormalizeEmail(customerEmail);
-        ShippingAddress = Guard.NotEmpty(shippingAddress, nameof(ShippingAddress));
+        ShippingAddress = shippingAddress ?? throw new DomainException("Shipping address is required.");
         Status = OrderStatus.Pending;
     }
 
@@ -85,10 +86,10 @@ public class Order : BaseEntity
         RecalculateTotal();
     }
 
-    public void UpdateShippingAddress(string shippingAddress)
+    public void UpdateShippingAddress(Address shippingAddress)
     {
         EnsureStatus(OrderStatus.Pending);
-        ShippingAddress = Guard.NotEmpty(shippingAddress, nameof(ShippingAddress));
+        ShippingAddress = shippingAddress ?? throw new DomainException("Shipping address is required.");
         MarkUpdated();
     }
 
