@@ -61,9 +61,11 @@ public static class ProductMappings
             .OrderBy(SizeRank)
             .ToList();
 
+    // Keys are emitted in size order (XS…XXL) so the serialized object matches the frontend shape.
     private static Dictionary<string, int> MapStock(Product product) =>
         product.Variants
             .GroupBy(v => v.Size, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => SizeRank(g.Key))
             .ToDictionary(g => g.Key, g => g.Sum(v => v.StockQuantity), StringComparer.OrdinalIgnoreCase);
 
     private static int SizeRank(string size)

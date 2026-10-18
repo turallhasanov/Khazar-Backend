@@ -66,7 +66,7 @@ public class Product : BaseEntity
         if (_variants.Any(v => v.SKU == normalizedSku))
             throw new DomainException($"SKU '{normalizedSku}' already exists on this product.");
 
-        var variant = new ProductVariant(Id, size, color, normalizedSku, stockQuantity);
+        var variant = new ProductVariant(Id, size, color, normalizedSku, stockQuantity, _variants.Count);
         _variants.Add(variant);
         MarkUpdated();
         return variant;
