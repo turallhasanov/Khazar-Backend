@@ -13,6 +13,12 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.32" />
   </ItemGroup>
 
+  <!-- IHttpClientFactory typed clients and options binding for external services (NexusERP). -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Khazar.Application\Khazar.Application.csproj" />
   </ItemGroup>

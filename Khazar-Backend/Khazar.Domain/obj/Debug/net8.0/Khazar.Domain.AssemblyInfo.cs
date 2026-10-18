@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Khazar.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f9657768f20ecee5f7f5238ce99a1512aeb98374")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9a4f007c8d64377d00fe9a3185e3f71048b6ccdd")]
 [assembly: System.Reflection.AssemblyProductAttribute("Khazar.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Khazar.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
