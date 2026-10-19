@@ -88,3 +88,5 @@ C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.WebAPI\obj\Debug\net8.
 C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.WebAPI\obj\Debug\net8.0\Khazar.WebAPI.pdb
 C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.WebAPI\obj\Debug\net8.0\Khazar.WebAPI.genruntimeconfig.cache
 C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.WebAPI\obj\Debug\net8.0\ref\Khazar.WebAPI.dll
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.WebAPI\bin\Debug\net8.0\Khazar.WebAPI.xml
+C:\Users\ROG\Desktop\Khazar-Backend\Khazar-Backend\Khazar.WebAPI\obj\Debug\net8.0\Khazar.WebAPI.xml

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Khazar.WebAPI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+399a4c05e9b6621428b12e9ff0ecc388fb9c9c97")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5ffc64b76b28a8386116a51fdbac8a544b1ce65c")]
 [assembly: System.Reflection.AssemblyProductAttribute("Khazar.WebAPI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Khazar.WebAPI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
