@@ -1,7 +1,10 @@
 using System.Reflection;
 using Khazar.Application;
+using Khazar.Application.Common.Interfaces;
 using Khazar.Infrastructure;
 using Khazar.Infrastructure.Persistence;
+using Khazar.WebAPI.Authentication;
+using Khazar.WebAPI.BackgroundJobs;
 using Khazar.WebAPI.Cors;
 using Khazar.WebAPI.ExceptionHandling;
 using Khazar.WebAPI.HealthChecks;
@@ -26,11 +29,20 @@ builder.Host.UseDefaultServiceProvider(options =>
 });
 
 // Composition root: each layer registers its own services.
-// Application: product and order use cases.
+// Application: product, order and auth use cases.
 builder.Services.AddApplicationServices();
 
-// Infrastructure: DbContext, repositories and the NexusERP client.
+// Infrastructure: DbContext, repositories, JWT issuing, password hashing, email and the NexusERP client.
 builder.Services.AddInfrastructureServices(builder.Configuration);
+
+// JWT bearer validation, the current-user accessor and per-IP limits on the auth endpoints.
+builder.Services.AddJwtAuthentication();
+builder.Services.AddAuthRateLimiting();
+
+// Placed orders are pushed to NexusERP by a background worker, so checkout never waits on the ERP.
+builder.Services.AddSingleton<OrderErpSyncQueue>();
+builder.Services.AddSingleton<IOrderErpSyncQueue>(services => services.GetRequiredService<OrderErpSyncQueue>());
+builder.Services.AddHostedService<OrderErpSyncWorker>();
 
 // Default System.Text.Json settings use camelCase, matching the property names the React frontend reads.
 builder.Services.AddControllers(options =>
@@ -50,6 +62,18 @@ builder.Services.AddSwaggerGen(options =>
     // so Swagger UI and generated clients get stable, readable names.
     options.CustomOperationIds(api =>
         api.ActionDescriptor is ControllerActionDescriptor action ? TrimAsyncSuffix(action.MethodInfo.Name) : null);
+
+    // "Authorize" button in Swagger UI: paste the accessToken from POST /api/auth/login.
+    var bearerScheme = new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Description = "Access token from POST /api/auth/login or /api/auth/verify-email.",
+        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" },
+    };
+    options.AddSecurityDefinition("Bearer", bearerScheme);
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement { [bearerScheme] = [] });
 
     // Controller XML comments become operation descriptions in Swagger UI.
     var xmlFile = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
@@ -91,6 +115,8 @@ if (app.Environment.IsDevelopment())
 // CORS runs before the HTTPS redirect: a redirected preflight (OPTIONS) is rejected by browsers.
 app.UseCors(FrontendCorsExtensions.PolicyName);
 app.UseHttpsRedirection();
+app.UseRateLimiter();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

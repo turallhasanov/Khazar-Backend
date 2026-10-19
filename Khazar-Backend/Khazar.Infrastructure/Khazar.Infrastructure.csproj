@@ -19,6 +19,16 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
   </ItemGroup>
 
+  <!-- JWT issuing (same IdentityModel version that Microsoft.AspNetCore.Authentication.JwtBearer 8.0 validates with). -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="7.1.2" />
+  </ItemGroup>
+
+  <!-- SMTP client for verification emails. -->
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.18.1" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Khazar.Application\Khazar.Application.csproj" />
   </ItemGroup>

@@ -8,7 +8,9 @@ namespace Khazar.Application.Services;
 
 public sealed class OrderAppService(
     IOrderRepository orderRepository,
-    IProductRepository productRepository) : IOrderAppService
+    IProductRepository productRepository,
+    ICurrentUserService currentUser,
+    IOrderErpSyncQueue erpSyncQueue) : IOrderAppService
 {
     public async Task<OrderResponseDto> CreateOrderAsync(CreateOrderDto dto, CancellationToken cancellationToken = default)
     {
@@ -18,10 +20,12 @@ public sealed class OrderAppService(
             throw new ValidationException("An order must contain at least one item.");
 
         // Name, email and address rules are enforced by the Order constructor and the Address value object.
+        // A signed-in customer's order is linked to the account; guest checkout stays possible.
         var order = new Order(
             dto.Customer.ToFullName(),
             dto.Customer.Email,
-            dto.Shipping.ToAddress());
+            dto.Shipping.ToAddress(),
+            currentUser.UserId);
 
         // Several lines may reference the same product; load each product once.
         var products = new Dictionary<Guid, Product>();
@@ -50,6 +54,10 @@ public sealed class OrderAppService(
 
         // The repository persists the order together with the stock changes above in one transaction.
         var created = await orderRepository.CreateAsync(order, cancellationToken);
+
+        // Only after the order is committed: the ERP push runs in the background and never delays checkout.
+        erpSyncQueue.Enqueue(created.Id);
+
         return created.ToResponseDto();
     }
 

@@ -1,4 +1,6 @@
 using Khazar.Application.Common.Interfaces;
+using Khazar.Infrastructure.Authentication;
+using Khazar.Infrastructure.Email;
 using Khazar.Infrastructure.ExternalServices;
 using Khazar.Infrastructure.Persistence;
 using Khazar.Infrastructure.Persistence.Repositories;
@@ -12,7 +14,7 @@ public static class DependencyInjection
 {
     public const string ConnectionStringName = "KhazarDb";
 
-    /// <summary>Registers the DbContext, repositories and the NexusERP client.</summary>
+    /// <summary>Registers the DbContext, repositories, token issuing, email delivery and the NexusERP client.</summary>
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -27,6 +29,20 @@ public static class DependencyInjection
 
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+        // Settings are validated here, so a missing JWT secret or SMTP host fails at startup.
+        services.AddSingleton(JwtOptions.FromConfiguration(configuration));
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
+
+        var smtpOptions = SmtpOptions.FromConfiguration(configuration);
+        services.AddSingleton(smtpOptions);
+        if (smtpOptions.DeliveryMethod == EmailDeliveryMethod.Log)
+            services.AddSingleton<IEmailService, LogEmailService>();
+        else
+            services.AddSingleton<IEmailService, SmtpEmailService>();
 
         services.AddNexusErpClient(configuration);
 

@@ -21,9 +21,11 @@ public static class FrontendCorsExtensions
             options.AddPolicy(PolicyName, policy => policy
                 .WithOrigins(origins)
                 .WithMethods(HttpMethods.Get, HttpMethods.Post, HttpMethods.Options)
-                .WithHeaders("Content-Type", "Accept")
-                // Location carries the URL of a newly created order; browsers hide it unless it is exposed.
-                .WithExposedHeaders("Location")
+                // Authorization carries the JWT of a signed-in customer.
+                .WithHeaders("Content-Type", "Accept", "Authorization")
+                // Location carries the URL of a newly created order; Retry-After accompanies 429 responses.
+                // Browsers hide response headers unless they are exposed.
+                .WithExposedHeaders("Location", "Retry-After")
                 .SetPreflightMaxAge(PreflightMaxAge)));
 
         return services;

@@ -1,6 +1,5 @@
 using Khazar.Application.Common.Interfaces;
 using Khazar.Domain.Entities;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace Khazar.Infrastructure.Persistence.Repositories;
@@ -10,10 +9,6 @@ public sealed class OrderRepository(KhazarDbContext dbContext)
 {
     // A collision on a 5-character code from a 32-symbol alphabet is rare; a few retries are plenty.
     private const int MaxOrderNumberAttempts = 5;
-
-    // SQL Server error numbers for duplicate keys on a unique index / unique constraint.
-    private const int UniqueIndexViolation = 2601;
-    private const int UniqueConstraintViolation = 2627;
 
     private const string OrderNumberIndexName = "IX_Orders_OrderNumber";
 
@@ -51,15 +46,11 @@ public sealed class OrderRepository(KhazarDbContext dbContext)
                 await DbContext.SaveChangesAsync(cancellationToken);
                 return order;
             }
-            catch (DbUpdateException ex) when (attempt < MaxOrderNumberAttempts && IsOrderNumberCollision(ex))
+            catch (DbUpdateException ex) when (attempt < MaxOrderNumberAttempts && ex.IsUniqueIndexViolation(OrderNumberIndexName))
             {
                 // A failed save leaves the change tracker untouched, so only the number needs to change.
                 order.RegenerateOrderNumber();
             }
         }
     }
-
-    private static bool IsOrderNumberCollision(DbUpdateException exception) =>
-        exception.InnerException is SqlException { Number: UniqueIndexViolation or UniqueConstraintViolation } sqlException
-        && sqlException.Message.Contains(OrderNumberIndexName, StringComparison.OrdinalIgnoreCase);
 }

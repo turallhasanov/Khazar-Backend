@@ -12,6 +12,10 @@ public sealed record OrderResponseDto
     public DateTime CreatedAt { get; init; }
     public string CustomerName { get; init; } = string.Empty;
     public string CustomerEmail { get; init; } = string.Empty;
+
+    /// <summary>Account the order is linked to; null for guest checkouts.</summary>
+    public Guid? UserId { get; init; }
+
     public string ShippingAddress { get; init; } = string.Empty;
     public string Currency { get; init; } = string.Empty;
     public decimal TotalAmount { get; init; }

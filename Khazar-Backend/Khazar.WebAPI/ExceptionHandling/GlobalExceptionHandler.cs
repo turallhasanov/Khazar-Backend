@@ -118,8 +118,10 @@ public sealed class GlobalExceptionHandler(
     private static (int StatusCode, string Title, string ErrorCode) Classify(Exception exception) => exception switch
     {
         // Order matters: InsufficientStockException derives from DomainException.
-        ValidationException => (StatusCodes.Status400BadRequest, "Invalid request", "validation_failed"),
+        ValidationException validation => (StatusCodes.Status400BadRequest, "Invalid request", validation.ErrorCode),
+        UnauthorizedException unauthorized => (StatusCodes.Status401Unauthorized, "Unauthorized", unauthorized.ErrorCode),
         NotFoundException => (StatusCodes.Status404NotFound, "Resource not found", "not_found"),
+        ConflictException conflict => (StatusCodes.Status409Conflict, "Conflict", conflict.ErrorCode),
         InsufficientStockException => (StatusCodes.Status409Conflict, "Insufficient stock", "insufficient_stock"),
         DomainException => (StatusCodes.Status400BadRequest, "Business rule violation", "business_rule_violation"),
 

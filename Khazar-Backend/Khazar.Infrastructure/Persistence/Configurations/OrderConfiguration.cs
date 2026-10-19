@@ -35,6 +35,13 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.HasIndex(o => o.OrderNumber).IsUnique();
         builder.HasIndex(o => o.CustomerEmail);
 
+        // Guest orders have no user; deleting an account keeps its order history.
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(o => o.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(o => o.UserId);
+
         builder.HasMany(o => o.Items)
             .WithOne(i => i.Order)
             .HasForeignKey(i => i.OrderId)
