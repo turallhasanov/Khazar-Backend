@@ -5,7 +5,10 @@ using Khazar.Infrastructure.Persistence;
 using Khazar.WebAPI.Cors;
 using Khazar.WebAPI.ExceptionHandling;
 using Khazar.WebAPI.HealthChecks;
+using Khazar.WebAPI.Routing;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 
@@ -30,7 +33,8 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Default System.Text.Json settings use camelCase, matching the property names the React frontend reads.
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+    options.Conventions.Add(new RouteTokenTransformerConvention(new LowercaseParameterTransformer())));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -41,6 +45,11 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Catalog and checkout endpoints for the Khazar React storefront. " +
                       "Errors are returned as RFC 7807 ProblemDetails with a traceId for support requests.",
     });
+
+    // Operation ids come from the C# method name without the "Async" suffix (GetProducts, CreateOrder, ...),
+    // so Swagger UI and generated clients get stable, readable names.
+    options.CustomOperationIds(api =>
+        api.ActionDescriptor is ControllerActionDescriptor action ? TrimAsyncSuffix(action.MethodInfo.Name) : null);
 
     // Controller XML comments become operation descriptions in Swagger UI.
     var xmlFile = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
@@ -122,6 +131,9 @@ static async Task InitializeDatabaseAsync(WebApplication app)
         logger.LogError(ex, "Database initialization failed; the API is running without a ready database.");
     }
 }
+
+static string TrimAsyncSuffix(string methodName) =>
+    methodName.EndsWith("Async", StringComparison.Ordinal) ? methodName[..^"Async".Length] : methodName;
 
 static void LogCorsConfiguration(WebApplication app)
 {
