@@ -13,7 +13,7 @@ public static class DependencyInjection
     public const string ConnectionStringName = "KhazarDb";
 
     /// <summary>Registers the DbContext, repositories and the NexusERP client.</summary>
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);

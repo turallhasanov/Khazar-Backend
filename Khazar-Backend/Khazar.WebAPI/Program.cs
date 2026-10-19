@@ -1,5 +1,5 @@
 using System.Reflection;
-using Khazar.Application.Services;
+using Khazar.Application;
 using Khazar.Infrastructure;
 using Khazar.Infrastructure.Persistence;
 using Khazar.WebAPI.Cors;
@@ -14,12 +14,20 @@ const string ReadyTag = "ready";
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Application layer use cases.
-builder.Services.AddScoped<IProductAppService, ProductAppService>();
-builder.Services.AddScoped<IOrderAppService, OrderAppService>();
+// Fail at startup, in every environment, when a registration is missing or a scoped service
+// is captured by a singleton, instead of on the first request that resolves it.
+builder.Host.UseDefaultServiceProvider(options =>
+{
+    options.ValidateOnBuild = true;
+    options.ValidateScopes = true;
+});
 
-// Persistence, repositories and the NexusERP client.
-builder.Services.AddInfrastructure(builder.Configuration);
+// Composition root: each layer registers its own services.
+// Application: product and order use cases.
+builder.Services.AddApplicationServices();
+
+// Infrastructure: DbContext, repositories and the NexusERP client.
+builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Default System.Text.Json settings use camelCase, matching the property names the React frontend reads.
 builder.Services.AddControllers();

@@ -13,4 +13,9 @@
     <ProjectReference Include="..\Khazar.Domain\Khazar.Domain.csproj" />
   </ItemGroup>
 
+  <!-- Abstractions only: lets the layer register its own services without depending on a DI container. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
 </Project>
