@@ -11,6 +11,10 @@
   <!-- SQL Server provider (brings in EF Core Relational). -->
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.32" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.32">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <!-- IHttpClientFactory typed clients and options binding for external services (NexusERP). -->

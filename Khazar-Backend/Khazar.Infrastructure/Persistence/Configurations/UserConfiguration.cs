@@ -22,6 +22,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         // SHA-256 as upper-case hex.
         builder.Property(u => u.ConfirmationToken).HasMaxLength(64).IsUnicode(false);
+        builder.Property(u => u.PasswordResetTokenHash).HasMaxLength(64).IsUnicode(false);
 
         builder.Ignore(u => u.FullName);
 

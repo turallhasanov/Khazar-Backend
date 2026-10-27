@@ -32,6 +32,20 @@ internal static class Guard
         return value;
     }
 
+    public static int InRange(int value, int min, int max, string name)
+    {
+        if (value < min || value > max)
+            throw new DomainException($"{name} must be between {min} and {max}.");
+        return value;
+    }
+
+    public static string MaxLength(string value, int maxLength, string name)
+    {
+        if (value.Length > maxLength)
+            throw new DomainException($"{name} cannot be longer than {maxLength} characters.");
+        return value;
+    }
+
     /// <summary>Validates the basic shape of an email address and returns it trimmed and lower-cased.</summary>
     public static string Email(string? value, string name)
     {

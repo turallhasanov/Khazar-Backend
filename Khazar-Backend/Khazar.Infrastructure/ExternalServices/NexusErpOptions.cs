@@ -12,7 +12,7 @@ public sealed class NexusErpOptions
 
     public string Password { get; set; } = string.Empty;
 
-    /// <summary>NexusERP store that storefront orders are recorded under; POST api/sales requires one.</summary>
+    /// <summary>NexusERP store that storefront orders are recorded under; POST api/online-orders requires one.</summary>
     public string StoreId { get; set; } = string.Empty;
 
     /// <summary>

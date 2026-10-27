@@ -31,6 +31,8 @@ public static class DependencyInjection
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IProductReviewRepository, ProductReviewRepository>();
+        services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
 
         // Settings are validated here, so a missing JWT secret or SMTP host fails at startup.
         services.AddSingleton(JwtOptions.FromConfiguration(configuration));
@@ -39,6 +41,7 @@ public static class DependencyInjection
 
         var smtpOptions = SmtpOptions.FromConfiguration(configuration);
         services.AddSingleton(smtpOptions);
+        services.AddSingleton(StorefrontOptions.FromConfiguration(configuration, smtpOptions.DeliveryMethod));
         if (smtpOptions.DeliveryMethod == EmailDeliveryMethod.Log)
             services.AddSingleton<IEmailService, LogEmailService>();
         else

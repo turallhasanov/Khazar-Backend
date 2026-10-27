@@ -1,6 +1,7 @@
 using Khazar.Application.Common.Exceptions;
 using Khazar.Application.Common.Interfaces;
 using Khazar.Application.Common.Mappings;
+using Khazar.Application.Common.Pricing;
 using Khazar.Application.DTOs.Orders;
 using Khazar.Domain.Entities;
 
@@ -10,7 +11,8 @@ public sealed class OrderAppService(
     IOrderRepository orderRepository,
     IProductRepository productRepository,
     ICurrentUserService currentUser,
-    IOrderErpSyncQueue erpSyncQueue) : IOrderAppService
+    IOrderErpSyncQueue erpSyncQueue,
+    IBackgroundEmailQueue emailQueue) : IOrderAppService
 {
     public async Task<OrderResponseDto> CreateOrderAsync(CreateOrderDto dto, CancellationToken cancellationToken = default)
     {
@@ -34,8 +36,10 @@ public sealed class OrderAppService(
         {
             if (!products.TryGetValue(item.ProductId, out var product))
             {
-                product = await productRepository.GetByIdAsync(item.ProductId, cancellationToken)
-                    ?? throw new NotFoundException(nameof(Product), item.ProductId);
+                // An archived product left in a cart is no longer for sale.
+                product = await productRepository.GetByIdAsync(item.ProductId, cancellationToken) is { IsActive: true } active
+                    ? active
+                    : throw new NotFoundException(nameof(Product), item.ProductId);
                 products[item.ProductId] = product;
             }
 
@@ -58,7 +62,13 @@ public sealed class OrderAppService(
         // Only after the order is committed: the ERP push runs in the background and never delays checkout.
         erpSyncQueue.Enqueue(created.Id);
 
-        return created.ToResponseDto();
+        // The receipt is built from the committed order; a mail server failure never fails the checkout.
+        var response = created.ToResponseDto();
+        var shipping = ShippingFees.Quote(response.TotalAmount, dto.Shipping.Courier);
+        emailQueue.Enqueue($"order confirmation {response.OrderNumber}", (sender, ct) =>
+            sender.SendOrderConfirmationAsync(response, shipping, ct));
+
+        return response;
     }
 
     public async Task<OrderResponseDto?> GetByNumberAsync(string orderNumber, CancellationToken cancellationToken = default)

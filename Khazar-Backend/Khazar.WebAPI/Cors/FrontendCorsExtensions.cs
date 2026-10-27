@@ -20,12 +20,18 @@ public static class FrontendCorsExtensions
         services.AddCors(options =>
             options.AddPolicy(PolicyName, policy => policy
                 .WithOrigins(origins)
-                .WithMethods(HttpMethods.Get, HttpMethods.Post, HttpMethods.Options)
+                // PATCH is used by the admin review moderation endpoint.
+                // PUT and DELETE are used by the admin panel (product updates, product and review deletion).
+                .WithMethods(
+                    HttpMethods.Get, HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch, HttpMethods.Delete,
+                    HttpMethods.Options)
                 // Authorization carries the JWT of a signed-in customer.
                 .WithHeaders("Content-Type", "Accept", "Authorization")
                 // Location carries the URL of a newly created order; Retry-After accompanies 429 responses.
                 // Browsers hide response headers unless they are exposed.
                 .WithExposedHeaders("Location", "Retry-After")
+                // Valid only with explicit origins (enforced above); lets the storefront send fetch credentials.
+                .AllowCredentials()
                 .SetPreflightMaxAge(PreflightMaxAge)));
 
         return services;

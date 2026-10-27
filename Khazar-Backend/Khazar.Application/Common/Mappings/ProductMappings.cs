@@ -1,3 +1,4 @@
+using Khazar.Application.Common.Interfaces;
 using Khazar.Application.DTOs.Products;
 using Khazar.Domain.Entities;
 using Khazar.Domain.Enums;
@@ -43,6 +44,42 @@ public static class ProductMappings
         StockQuantity = variant.StockQuantity,
         IsInStock = variant.IsInStock,
     };
+
+    public static AdminProductDto ToAdminDto(this ManagedProduct managed)
+    {
+        var product = managed.Product;
+        return new AdminProductDto
+        {
+            Id = product.Id,
+            Name = product.Name,
+            Slug = product.Slug,
+            Description = product.Description,
+            Category = product.Category,
+            Fabric = product.Fabric,
+            Price = product.Price,
+            Currency = DefaultCurrency,
+            CoverImage = product.CoverImage,
+            IsFeatured = product.IsFeatured,
+            IsActive = product.IsActive,
+            TotalStock = product.Variants.Sum(v => v.StockQuantity),
+            ReviewCount = managed.ReviewCount,
+            HasOrders = managed.HasOrders,
+            CreatedAt = product.CreatedAt,
+            UpdatedAt = product.UpdatedAt,
+            Variants = product.Variants
+                .OrderBy(v => v.SortOrder)
+                .Select(v => new AdminProductVariantDto
+                {
+                    Id = v.Id,
+                    Size = v.Size,
+                    Color = v.Color,
+                    Sku = v.SKU,
+                    StockQuantity = v.StockQuantity,
+                    HasOrders = managed.OrderedVariantIds.Contains(v.Id),
+                })
+                .ToList(),
+        };
+    }
 
     public static IReadOnlyList<ProductListDto> ToListDtos(this IEnumerable<Product> products) =>
         products.Select(p => p.ToListDto()).ToList();

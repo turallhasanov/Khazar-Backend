@@ -5,6 +5,13 @@ namespace Khazar.Domain.Entities;
 
 public class Product : BaseEntity
 {
+    public const int MaxNameLength = 200;
+    public const int MaxSlugLength = 200;
+    public const int MaxDescriptionLength = 4000;
+    public const int MaxFabricLength = 200;
+    public const int MaxCategoryLength = 100;
+    public const int MaxCoverImageLength = 1000;
+
     private readonly List<ProductVariant> _variants = [];
 
     public string Name { get; private set; } = default!;
@@ -15,6 +22,12 @@ public class Product : BaseEntity
     public string Category { get; private set; } = default!;
     public string CoverImage { get; private set; } = default!;
     public bool IsFeatured { get; private set; }
+
+    /// <summary>
+    /// False once archived: the product leaves the storefront and cannot be ordered, but its order history,
+    /// reviews and NexusERP SKUs stay intact. Products that were ordered are archived rather than deleted.
+    /// </summary>
+    public bool IsActive { get; private set; } = true;
 
     public IReadOnlyCollection<ProductVariant> Variants => _variants.AsReadOnly();
 
@@ -60,16 +73,52 @@ public class Product : BaseEntity
         MarkUpdated();
     }
 
+    public void Archive()
+    {
+        if (!IsActive)
+            return;
+
+        IsActive = false;
+        MarkUpdated();
+    }
+
+    public void Restore()
+    {
+        if (IsActive)
+            return;
+
+        IsActive = true;
+        MarkUpdated();
+    }
+
     public ProductVariant AddVariant(string size, string color, string sku, int stockQuantity)
     {
         var normalizedSku = Guard.NotEmpty(sku, nameof(ProductVariant.SKU)).ToUpperInvariant();
         if (_variants.Any(v => v.SKU == normalizedSku))
             throw new DomainException($"SKU '{normalizedSku}' already exists on this product.");
 
-        var variant = new ProductVariant(Id, size, color, normalizedSku, stockQuantity, _variants.Count);
+        // Checkout resolves a variant by color and size, so the pair must stay unique.
+        if (_variants.Any(v => v.Color.Equals(color?.Trim(), StringComparison.OrdinalIgnoreCase)
+                               && v.Size.Equals(size?.Trim(), StringComparison.OrdinalIgnoreCase)))
+            throw new DomainException($"A variant with color '{color}' and size '{size}' already exists on this product.");
+
+        var sortOrder = _variants.Count == 0 ? 0 : _variants.Max(v => v.SortOrder) + 1;
+        // Empty values are rejected by the ProductVariant constructor.
+        var variant = new ProductVariant(
+            Id, size?.Trim() ?? string.Empty, color?.Trim() ?? string.Empty, normalizedSku, stockQuantity, sortOrder);
         _variants.Add(variant);
         MarkUpdated();
         return variant;
+    }
+
+    /// <summary>Removes a variant. Callers must first make sure no order references it.</summary>
+    public void RemoveVariant(Guid variantId)
+    {
+        var variant = _variants.FirstOrDefault(v => v.Id == variantId)
+            ?? throw new DomainException($"Variant '{variantId}' does not belong to this product.");
+
+        _variants.Remove(variant);
+        MarkUpdated();
     }
 
     private void SetDetails(

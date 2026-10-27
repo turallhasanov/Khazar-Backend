@@ -1,5 +1,6 @@
 using Khazar.Application.Common.Interfaces;
 using Khazar.Domain.Entities;
+using Khazar.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Khazar.Infrastructure.Persistence.Repositories;
@@ -30,6 +31,14 @@ public sealed class OrderRepository(KhazarDbContext dbContext)
             .AsNoTracking()
             .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber, cancellationToken);
+
+    public async Task<bool> HasPurchasedProductAsync(
+        Guid userId, string email, Guid productId, CancellationToken cancellationToken = default) =>
+        await Set.AnyAsync(
+            o => (o.UserId == userId || o.CustomerEmail == email)
+                 && o.Status != OrderStatus.Cancelled
+                 && o.Items.Any(i => i.ProductId == productId),
+            cancellationToken);
 
     /// <summary>
     /// Saves the order with its items. The single SaveChanges call also commits stock changes on

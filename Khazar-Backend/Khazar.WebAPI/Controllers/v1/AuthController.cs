@@ -97,6 +97,40 @@ public sealed class AuthController(IAuthAppService authAppService, ICurrentUserS
     public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequestDto dto, CancellationToken cancellationToken) =>
         Ok(await authAppService.RefreshTokenAsync(dto, cancellationToken));
 
+    /// <summary>Emails a single-use link (valid for 30 minutes) for setting a new password.</summary>
+    /// <param name="dto">Email address of the account.</param>
+    /// <param name="cancellationToken">Aborts the request when the client disconnects.</param>
+    /// <response code="202">Accepted. Returned for unknown and unconfirmed addresses too.</response>
+    /// <response code="429">Too many auth requests from this client.</response>
+    [HttpPost("forgot-password")]
+    [Consumes("application/json")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> ForgotPasswordAsync([FromBody] ForgotPasswordRequestDto dto, CancellationToken cancellationToken)
+    {
+        await authAppService.ForgotPasswordAsync(dto, cancellationToken);
+        return Accepted();
+    }
+
+    /// <summary>Sets a new password with the token from the reset link; every session of the account is signed out.</summary>
+    /// <param name="dto">Email address and token from the link, and the new password.</param>
+    /// <param name="cancellationToken">Aborts the request when the client disconnects.</param>
+    /// <response code="204">The password was changed. Sign in with the new password.</response>
+    /// <response code="400">
+    /// The new password is too weak ("weak_password") or the link is invalid, expired or already used ("invalid_reset_token").
+    /// </response>
+    /// <response code="429">Too many auth requests from this client.</response>
+    [HttpPost("reset-password")]
+    [Consumes("application/json")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> ResetPasswordAsync([FromBody] ResetPasswordRequestDto dto, CancellationToken cancellationToken)
+    {
+        await authAppService.ResetPasswordAsync(dto, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Revokes the refresh token. The access token stays valid until it expires (at most 15 minutes).</summary>
     /// <param name="dto">The refresh token to revoke.</param>
     /// <param name="cancellationToken">Aborts the request when the client disconnects.</param>

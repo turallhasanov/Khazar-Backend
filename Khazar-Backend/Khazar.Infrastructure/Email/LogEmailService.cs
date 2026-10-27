@@ -1,20 +1,20 @@
-using Khazar.Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace Khazar.Infrastructure.Email;
 
 /// <summary>
-/// Development stand-in for <see cref="SmtpEmailService"/> (Smtp:DeliveryMethod = Log): the verification code is
-/// written to the log, so registration can be tested without an SMTP server. Never enable it in production.
+/// Development stand-in for <see cref="SmtpEmailService"/> (Smtp:DeliveryMethod = Log): instead of sending, the
+/// subject, recipient and the part a developer needs (verification code, reset link, discount code) are written to
+/// the log, so every email flow can be tested without an SMTP server. Never enable it in production.
 /// </summary>
-public sealed class LogEmailService(ILogger<LogEmailService> logger) : IEmailService
+public sealed class LogEmailService(StorefrontOptions storefront, ILogger<LogEmailService> logger)
+    : EmailServiceBase(storefront)
 {
-    public Task<bool> SendVerificationCodeAsync(
-        string toEmail, string recipientName, string code, TimeSpan validFor, CancellationToken cancellationToken = default)
+    protected override Task<bool> DeliverAsync(EmailMessage message, CancellationToken cancellationToken)
     {
         logger.LogWarning(
-            "SMTP delivery is disabled; email '{Subject}' to {Email} was not sent. Verification code: {Code} (valid for {Minutes} minutes).",
-            VerificationEmail.Subject, toEmail, code, (int)validFor.TotalMinutes);
+            "SMTP delivery is disabled; email '{Subject}' to {Email} was not sent. {Detail}",
+            message.Subject, message.ToEmail, message.LogDetail);
 
         return Task.FromResult(true);
     }

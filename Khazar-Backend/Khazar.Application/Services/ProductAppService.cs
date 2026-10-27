@@ -14,8 +14,9 @@ public sealed class ProductAppService(IProductRepository productRepository) : IP
 
     public async Task<ProductDetailDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        // GetByIdAsync also returns archived products; the storefront must not show them.
         var product = await productRepository.GetByIdAsync(id, cancellationToken);
-        return product?.ToDetailDto();
+        return product is { IsActive: true } ? product.ToDetailDto() : null;
     }
 
     public async Task<ProductDetailDto?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default)

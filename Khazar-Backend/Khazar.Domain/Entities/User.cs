@@ -28,6 +28,11 @@ public class User : BaseEntity
     public DateTime? ConfirmationTokenExpiresAt { get; private set; }
     public int ConfirmationAttempts { get; private set; }
 
+    /// <summary>Hash of the pending password reset token; the token itself is only sent by email.</summary>
+    public string? PasswordResetTokenHash { get; private set; }
+
+    public DateTime? PasswordResetTokenExpiresAt { get; private set; }
+
     public string FullName => $"{FirstName} {LastName}";
 
     // Required by ORMs
@@ -86,5 +91,51 @@ public class User : BaseEntity
         ConfirmationAttempts = 0;
         MarkUpdated();
         return EmailConfirmationResult.Confirmed;
+    }
+
+    /// <summary>
+    /// Confirms the email address without a code. Only for accounts created by the system itself (the seeded
+    /// SuperAdmin), whose address is set by configuration rather than typed in by a visitor.
+    /// </summary>
+    public void MarkEmailConfirmed(DateTime now)
+    {
+        if (IsEmailConfirmed)
+            return;
+
+        IsEmailConfirmed = true;
+        EmailConfirmedAt = now;
+        ConfirmationToken = null;
+        ConfirmationTokenExpiresAt = null;
+        ConfirmationAttempts = 0;
+        MarkUpdated();
+    }
+
+    /// <summary>Stores a new password reset token hash; any previously issued reset link stops working.</summary>
+    public void SetPasswordResetToken(string tokenHash, DateTime expiresAt)
+    {
+        PasswordResetTokenHash = Guard.NotEmpty(tokenHash, nameof(PasswordResetTokenHash));
+        PasswordResetTokenExpiresAt = expiresAt;
+        MarkUpdated();
+    }
+
+    /// <summary>
+    /// Replaces the password when the reset token hash matches and has not expired. The token is single-use:
+    /// it is cleared on success. Returns false for a wrong, expired or already used token.
+    /// </summary>
+    public bool ResetPassword(string tokenHash, string newPasswordHash, DateTime now)
+    {
+        if (PasswordResetTokenHash is null || PasswordResetTokenExpiresAt is null || now >= PasswordResetTokenExpiresAt)
+            return false;
+
+        // Constant-time comparison: response timing must not reveal how much of the hash matched.
+        if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.ASCII.GetBytes(PasswordResetTokenHash), Encoding.ASCII.GetBytes(tokenHash ?? string.Empty)))
+            return false;
+
+        PasswordHash = Guard.NotEmpty(newPasswordHash, nameof(PasswordHash));
+        PasswordResetTokenHash = null;
+        PasswordResetTokenExpiresAt = null;
+        MarkUpdated();
+        return true;
     }
 }

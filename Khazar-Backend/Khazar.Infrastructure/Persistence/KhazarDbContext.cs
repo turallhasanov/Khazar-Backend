@@ -11,6 +11,8 @@ public sealed class KhazarDbContext(DbContextOptions<KhazarDbContext> options) :
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<ProductReview> ProductReviews => Set<ProductReview>();
+    public DbSet<NewsletterSubscription> NewsletterSubscriptions => Set<NewsletterSubscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

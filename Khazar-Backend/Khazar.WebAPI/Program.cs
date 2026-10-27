@@ -12,6 +12,7 @@ using Khazar.WebAPI.Routing;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 
@@ -35,14 +36,23 @@ builder.Services.AddApplicationServices();
 // Infrastructure: DbContext, repositories, JWT issuing, password hashing, email and the NexusERP client.
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// JWT bearer validation, the current-user accessor and per-IP limits on the auth endpoints.
+// JWT bearer validation, the current-user accessor and per-IP limits on the auth and public form endpoints.
 builder.Services.AddJwtAuthentication();
 builder.Services.AddAuthRateLimiting();
+
+// /api/admin endpoints: signed-in users whose email is listed in "Admin:Emails".
+builder.Services.AddPlatformAdminAuthorization(builder.Configuration);
 
 // Placed orders are pushed to NexusERP by a background worker, so checkout never waits on the ERP.
 builder.Services.AddSingleton<OrderErpSyncQueue>();
 builder.Services.AddSingleton<IOrderErpSyncQueue>(services => services.GetRequiredService<OrderErpSyncQueue>());
 builder.Services.AddHostedService<OrderErpSyncWorker>();
+
+// Newsletter welcome, order confirmation and password reset emails are sent by a background worker with retries,
+// so a slow or failing mail server never delays or fails the operation that triggered them.
+builder.Services.AddSingleton<BackgroundEmailQueue>();
+builder.Services.AddSingleton<IBackgroundEmailQueue>(services => services.GetRequiredService<BackgroundEmailQueue>());
+builder.Services.AddHostedService<EmailDispatchWorker>();
 
 // Default System.Text.Json settings use camelCase, matching the property names the React frontend reads.
 builder.Services.AddControllers(options =>
@@ -114,7 +124,11 @@ if (app.Environment.IsDevelopment())
 
 // CORS runs before the HTTPS redirect: a redirected preflight (OPTIONS) is rejected by browsers.
 app.UseCors(FrontendCorsExtensions.PolicyName);
-app.UseHttpsRedirection();
+
+// Not in Development: the storefront calls http://localhost:5293, and under the "https" launch profile a
+// redirect to https://localhost:7169 is cross-origin, so the browser resends with "Origin: null" and CORS fails.
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -138,8 +152,9 @@ LogCorsConfiguration(app);
 
 await app.RunAsync();
 
-// Development only: creates the schema and seeds the catalog so the frontend has data to work with.
-// EnsureCreated bypasses migrations; replace it with Database.MigrateAsync once migrations are added.
+// Development only: applies pending migrations (creating the database if it was dropped), seeds the catalog
+// so the frontend has data to work with, and creates the SuperAdmin account if it does not exist. Migrations, not EnsureCreated: a database created by EnsureCreated has
+// no migration history, so a later "dotnet ef database update" would fail on the existing tables.
 // A database failure is logged instead of stopping the API, so Swagger stays reachable for diagnosis.
 static async Task InitializeDatabaseAsync(WebApplication app)
 {
@@ -149,8 +164,13 @@ static async Task InitializeDatabaseAsync(WebApplication app)
     try
     {
         var context = scope.ServiceProvider.GetRequiredService<KhazarDbContext>();
-        await context.Database.EnsureCreatedAsync();
+        await context.Database.MigrateAsync();
         await KhazarDbInitializer.SeedAsync(context, logger);
+        await SuperAdminSeeder.SeedAsync(
+            context,
+            scope.ServiceProvider.GetRequiredService<IPasswordHasher>(),
+            SuperAdminSeedOptions.FromConfiguration(app.Configuration),
+            logger);
     }
     catch (Exception ex)
     {

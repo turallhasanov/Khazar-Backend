@@ -5,6 +5,10 @@ namespace Khazar.Domain.Entities;
 
 public class ProductVariant : BaseEntity
 {
+    public const int MaxSizeLength = 16;
+    public const int MaxColorLength = 64;
+    public const int MaxSkuLength = 64;
+
     public Guid ProductId { get; private set; }
     public string Size { get; private set; } = default!;
     public string Color { get; private set; } = default!;

@@ -108,31 +108,31 @@ public static class KhazarDbInitializer
     [
         new("ZOHO", "Zoho Oversize Sweatshirt", "zoho-oversize-sweatshirt",
             "Avropa üç ipliyi ilə toxunmuş, möhkəm mansetli oversize fit svitshot. Limited seriya.",
-            "Sweatshirt", 84m, "%80 Pambıq, %20 Polyester", "1576871337622-98d48d1cf531", IsFeatured: true,
+            "Sweatshirt", 84m, "%80 Pambıq, %20 Polyester", "1661110546801-cfe548af5705", IsFeatured: true,
             ["Boz", "Bej", "Qara"],
             [("XS", 4), ("S", 12), ("M", 20), ("L", 8), ("XL", 3)]),
 
         new("EUCT", "European Cotton T-Shirt", "european-cotton-t-shirt",
             "Yüksək qramajlı Avropa pambığından, yaxa hissəsi gücləndirilmiş klassik fit t-shirt.",
-            "T-Shirt", 39.9m, "%100 Pambıq", "1521572163474-6864f9cf17ab", IsFeatured: false,
+            "T-Shirt", 39.9m, "%100 Pambıq", "1778671394516-8270eac13c42", IsFeatured: false,
             ["Ağ", "Qara", "Haki"],
             [("S", 15), ("M", 25), ("L", 18), ("XL", 10), ("XXL", 6)]),
 
         new("CRGO", "Minimalist Cargo Pants", "minimalist-cargo-pants",
             "Geniş bacaqlı, düşük profilli cib detallı minimalist cargo şalvar. Toka ilə tənzimlənən bel.",
-            "Pants", 98m, "%97 Pambıq, %3 Elastan", "1542272604-787c3835535d", IsFeatured: false,
+            "Pants", 98m, "%97 Pambıq, %3 Elastan", "1700676195086-81b936390de4", IsFeatured: false,
             ["Qum", "Tünd boz"],
             [("S", 7), ("M", 14), ("L", 11), ("XL", 5)]),
 
         new("HVHD", "Heavyweight Hoodie", "heavyweight-hoodie",
             "400 q/m² ağır parça, ön cəbi və ikiqat qapşonlu premium hoodie. Fırçalanmış iç səth.",
-            "Hoodie", 89m, "%85 Pambıq, %15 Polyester", "1620799140408-edc6dcb6d633", IsFeatured: false,
+            "Hoodie", 89m, "%85 Pambıq, %15 Polyester", "1688111421205-a0a85415b224", IsFeatured: false,
             ["Antrasit", "Krem"],
             [("S", 9), ("M", 16), ("L", 12), ("XL", 7), ("XXL", 2)]),
 
         new("MRNO", "Merino Longsleeve", "merino-longsleeve",
             "İncə merino yun qarışımlı, dəriyə yumşaq toxunan longsleeve. Mövsüm keçidinin əsas parçası.",
-            "Longsleeve", 64m, "%50 Merino yun, %50 Viskoz", "1434389677669-e08b4cac3105", IsFeatured: false,
+            "Longsleeve", 64m, "%50 Merino yun, %50 Viskoz", "1631541909061-71e349d1f203", IsFeatured: false,
             ["Krem", "Tünd yaşıl"],
             [("S", 6), ("M", 10), ("L", 9), ("XL", 4)]),
 
@@ -144,25 +144,25 @@ public static class KhazarDbInitializer
 
         new("VWSW", "Vintage Wash Sweatshirt", "vintage-wash-sweatshirt",
             "Köhnəlmə (vintage wash) effektli, yumuşaq toxunuşlu svitshot. Düşük omuz, rahat fit.",
-            "Sweatshirt", 79m, "%100 Pambıq", "1620799140408-edc6dcb6d633", IsFeatured: false,
+            "Sweatshirt", 79m, "%100 Pambıq", "1599363987217-605ae31a9695", IsFeatured: false,
             ["Tozlu mavi", "Qəhvəyi"],
             [("S", 11), ("M", 17), ("L", 9), ("XL", 5)]),
 
         new("EOTS", "Essential Oversize T-Shirt", "essential-oversize-t-shirt",
             "Gündəlik istifadə üçün hazırlanmış düşük omuzlu oversize t-shirt. Limitsiz kombin.",
-            "T-Shirt", 44m, "%100 Pambıq", "1562157873-818bc0726f68", IsFeatured: false,
+            "T-Shirt", 44m, "%100 Pambıq", "1521572163474-6864f9cf17ab", IsFeatured: false,
             ["Ağ", "Bej", "Qara"],
             [("XS", 5), ("S", 14), ("M", 22), ("L", 16), ("XL", 9), ("XXL", 4)]),
 
         new("PLWP", "Pleated Wide Pants", "pleated-wide-pants",
             "Qatlı (pleated) bel detaylı, geniş bacaqlı klassik şalvar. İstirahət və ofis üçün uyğun.",
-            "Pants", 112m, "%64 Poliester, %34 Viskoz, %2 Elastan", "1594633312681-425c7b97ccd1", IsFeatured: false,
+            "Pants", 112m, "%64 Poliester, %34 Viskoz, %2 Elastan", "1767631338127-8cd80ee2f9df", IsFeatured: false,
             ["Qara", "Boz"],
             [("S", 8), ("M", 13), ("L", 10), ("XL", 6)]),
 
         new("DFCT", "Double-Face Coat", "double-face-coat",
             "İki üzlü yun parçadan, içi kürklə əvəzlənən isti qış paltosu. Minimal kəsik, maksimal rahatlıq.",
-            "Coat", 340m, "%80 Yun, %20 Kaşmir", "1551028719-00167b16eac5", IsFeatured: false,
+            "Coat", 340m, "%80 Yun, %20 Kaşmir", "1648066380643-675d30c3cd17", IsFeatured: false,
             ["Qara", "Dəvə"],
             [("S", 2), ("M", 6), ("L", 5), ("XL", 1)]),
     ];

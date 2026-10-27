@@ -21,7 +21,8 @@ public sealed class NexusErpClient : INexusErpClient
 {
     private const string StocksEndpoint = "api/inventory/stocks";
     private const string ProductByBarcodeEndpoint = "api/products/barcode/";
-    private const string SalesEndpoint = "api/sales";
+    // Retail (B2C) orders: NexusERP books them to its "Khazar Online Müştəri" account, never to wholesale sales.
+    private const string OnlineOrdersEndpoint = "api/online-orders";
 
     private readonly HttpClient _httpClient;
     private readonly KhazarDbContext _dbContext;
@@ -156,9 +157,16 @@ public sealed class NexusErpClient : INexusErpClient
                 lines.Add(new SaleItemRequest(productId, item.Quantity, item.UnitPrice));
             }
 
-            var request = new CreateSaleRequest(_settings.StoreId.Trim(), WarehouseId, CustomerId: null, order.CreatedAt, lines);
+            // The order number makes the push idempotent: NexusERP returns the existing sale when a retry resends it.
+            var request = new CreateOnlineOrderRequest(
+                order.OrderNumber,
+                _settings.StoreId.Trim(),
+                WarehouseId,
+                order.CreatedAt,
+                new RetailCustomer(order.CustomerName, order.CustomerEmail, order.ShippingAddress.ToString()),
+                lines);
 
-            using var response = await _httpClient.PostAsJsonAsync(SalesEndpoint, request, cancellationToken);
+            using var response = await _httpClient.PostAsJsonAsync(OnlineOrdersEndpoint, request, cancellationToken);
 
             if (response.StatusCode is HttpStatusCode.OK or HttpStatusCode.Created)
             {
@@ -226,13 +234,17 @@ public sealed class NexusErpClient : INexusErpClient
             _logger.LogError(ex, "NexusERP {Operation} failed: NexusERP is unreachable or returned an invalid response.", operation);
     }
 
-    // Contract of NexusERP's POST api/sales (operation Sales_Create) and the responses read here.
-    private sealed record CreateSaleRequest(
+    // Contract of NexusERP's POST api/online-orders (operation OnlineOrders_Create) and the responses read here.
+    private sealed record CreateOnlineOrderRequest(
+        string ExternalOrderNumber,
         string StoreId,
         string? WarehouseId,
-        string? CustomerId,
         DateTime DocumentDate,
+        RetailCustomer Customer,
         IReadOnlyList<SaleItemRequest> Items);
+
+    // Khazar keeps one name field and no phone yet; NexusERP also accepts firstName/lastName and phone.
+    private sealed record RetailCustomer(string FullName, string Email, string Address);
 
     private sealed record SaleItemRequest(string ProductId, decimal Quantity, decimal UnitPrice);
 

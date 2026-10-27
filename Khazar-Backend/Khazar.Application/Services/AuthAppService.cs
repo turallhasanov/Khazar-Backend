@@ -13,7 +13,8 @@ public sealed class AuthAppService(
     IRefreshTokenRepository refreshTokenRepository,
     IPasswordHasher passwordHasher,
     IJwtTokenGenerator jwtTokenGenerator,
-    IEmailService emailService) : IAuthAppService
+    IEmailService emailService,
+    IBackgroundEmailQueue emailQueue) : IAuthAppService
 {
     private const int MinPasswordLength = 8;
     private const int MaxPasswordLength = 128;
@@ -22,6 +23,10 @@ public sealed class AuthAppService(
     private const int VerificationCodeLength = 6;
 
     private static readonly TimeSpan VerificationCodeLifetime = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan PasswordResetTokenLifetime = TimeSpan.FromMinutes(30);
+
+    // 256 bits: a reset token cannot be guessed, so a fast unsalted hash is enough to store it.
+    private const int PasswordResetTokenBytes = 32;
 
     // Several tabs share one refresh token and may race to rotate it; a token presented again within this window
     // is a lost race, later it is treated as stolen.
@@ -183,6 +188,48 @@ public sealed class AuthAppService(
         await refreshTokenRepository.UpdateAsync(stored, cancellationToken);
     }
 
+    public async Task ForgotPasswordAsync(ForgotPasswordRequestDto dto, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        // Unconfirmed accounts finish registration with the verification code instead.
+        var user = await userRepository.GetByEmailAsync(NormalizeEmail(dto.Email), cancellationToken);
+        if (user is null || !user.IsEmailConfirmed)
+            return;
+
+        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(PasswordResetTokenBytes));
+        user.SetPasswordResetToken(HashPasswordResetToken(token), DateTime.UtcNow + PasswordResetTokenLifetime);
+        await userRepository.UpdateAsync(user, cancellationToken);
+
+        // Sent in the background: the response time must not reveal whether the account exists.
+        var (email, firstName) = (user.Email, user.FirstName);
+        emailQueue.Enqueue($"password reset for {email}", (sender, ct) =>
+            sender.SendPasswordResetAsync(email, firstName, token, PasswordResetTokenLifetime, ct));
+    }
+
+    public async Task ResetPasswordAsync(ResetPasswordRequestDto dto, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        var email = NormalizeEmail(dto.Email);
+        ValidatePassword(dto.NewPassword);
+        var token = dto.Token?.Trim() ?? string.Empty;
+
+        // Unknown addresses and wrong, expired or used tokens all get the same answer.
+        var user = await userRepository.GetByEmailAsync(email, cancellationToken);
+        var now = DateTime.UtcNow;
+        if (user is null || token.Length == 0
+            || !user.ResetPassword(HashPasswordResetToken(token), passwordHasher.Hash(dto.NewPassword), now))
+        {
+            throw new ValidationException(
+                "The password reset link is invalid or has expired. Request a new link.", "invalid_reset_token");
+        }
+
+        // Ends every session that may have been opened with the old password; also saves the new password hash
+        // (the user is tracked by the same unit of work).
+        await refreshTokenRepository.RevokeAllForUserAsync(user.Id, now, cancellationToken);
+    }
+
     public async Task<UserDto?> GetUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await userRepository.GetByIdAsync(userId, cancellationToken);
@@ -211,6 +258,10 @@ public sealed class AuthAppService(
     // Salted with the user id, so equal codes of different users have different hashes.
     private static string HashVerificationCode(Guid userId, string code) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{userId:N}:{code}")));
+
+    // Tokens are compared case-insensitively (hex), so a mail client that changes case does not break the link.
+    private static string HashPasswordResetToken(string token) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token.ToUpperInvariant())));
 
     private static string NormalizeEmail(string? email)
     {
