@@ -19,14 +19,17 @@ public static class ProductMappings
         Id = product.Id,
         Slug = product.Slug,
         Name = product.Name,
-        Category = product.Category,
+        Category = product.Category.Name,
+        CategoryLabel = product.Category.Label,
         BasePrice = product.Price,
         Currency = DefaultCurrency,
         Colors = MapColors(product),
         Sizes = MapSizes(product),
-        Images = [product.CoverImage],
+        Images = product.HoverImage is null ? [product.CoverImage] : [product.CoverImage, product.HoverImage],
         Fabric = new ProductFabricDto { Material = product.Fabric },
         Stock = MapStock(product),
+        // The storefront's "Bestseller" label and "featured" sort read this flag.
+        IsBestseller = product.IsFeatured,
     };
 
     public static ProductDetailDto ToDetailDto(this Product product) => new(product.ToListDto())
@@ -54,7 +57,9 @@ public static class ProductMappings
             Name = product.Name,
             Slug = product.Slug,
             Description = product.Description,
-            Category = product.Category,
+            CategoryId = product.CategoryId,
+            Category = product.Category.Name,
+            CategoryLabel = product.Category.Label,
             Fabric = product.Fabric,
             Price = product.Price,
             Currency = DefaultCurrency,

@@ -4,7 +4,7 @@ namespace Khazar.Application.Services;
 
 /// <summary>
 /// Catalog management for platform admins. Failures carry an errorCode naming the field or rule, e.g. "invalid_slug",
-/// "slug_taken", "sku_taken", "product_has_orders", so the admin panel can point at the right input.
+/// "slug_taken", "invalid_category", "sku_taken", "product_has_orders", so the admin panel can point at the right input.
 /// </summary>
 public interface IAdminProductAppService
 {

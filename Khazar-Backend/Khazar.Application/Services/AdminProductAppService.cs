@@ -7,7 +7,8 @@ using Khazar.Domain.Entities;
 
 namespace Khazar.Application.Services;
 
-public sealed partial class AdminProductAppService(IProductRepository productRepository) : IAdminProductAppService
+public sealed partial class AdminProductAppService(IProductRepository productRepository, ICategoryRepository categoryRepository)
+    : IAdminProductAppService
 {
     public const decimal MaxPrice = 100_000m;
     public const int MaxStock = 100_000;
@@ -25,6 +26,7 @@ public sealed partial class AdminProductAppService(IProductRepository productRep
     {
         ArgumentNullException.ThrowIfNull(dto);
         var fields = ValidateFields(dto);
+        var category = await LoadCategoryAsync(dto.CategoryId, cancellationToken);
 
         if (await productRepository.SlugExistsAsync(fields.Slug, cancellationToken: cancellationToken))
             throw SlugTaken();
@@ -44,7 +46,7 @@ public sealed partial class AdminProductAppService(IProductRepository productRep
         }
 
         var product = new Product(
-            fields.Name, fields.Slug, fields.Description, fields.Price, fields.Fabric, fields.Category, fields.CoverImage,
+            fields.Name, fields.Slug, fields.Description, fields.Price, fields.Fabric, category, fields.CoverImage,
             dto.IsFeatured);
         foreach (var variant in variants)
             product.AddVariant(variant.Size, variant.Color, variant.Sku, variant.StockQuantity);
@@ -57,13 +59,14 @@ public sealed partial class AdminProductAppService(IProductRepository productRep
     {
         ArgumentNullException.ThrowIfNull(dto);
         var fields = ValidateFields(dto);
+        var category = await LoadCategoryAsync(dto.CategoryId, cancellationToken);
         var managed = await LoadAsync(id, cancellationToken);
 
         if (await productRepository.SlugExistsAsync(fields.Slug, id, cancellationToken))
             throw SlugTaken();
 
         var product = managed.Product;
-        product.UpdateDetails(fields.Name, fields.Slug, fields.Description, fields.Fabric, fields.Category, fields.CoverImage);
+        product.UpdateDetails(fields.Name, fields.Slug, fields.Description, fields.Fabric, category, fields.CoverImage);
         if (product.Price != fields.Price)
             product.ChangePrice(fields.Price);
         if (product.IsFeatured != dto.IsFeatured)
@@ -161,8 +164,13 @@ public sealed partial class AdminProductAppService(IProductRepository productRep
         await productRepository.GetForAdminByIdAsync(id, cancellationToken)
         ?? throw new NotFoundException(nameof(Product), id);
 
+    // An unknown id is a field error, not a 404: the product exists, the chosen category does not.
+    private async Task<Category> LoadCategoryAsync(Guid categoryId, CancellationToken cancellationToken) =>
+        (categoryId == Guid.Empty ? null : await categoryRepository.GetByIdAsync(categoryId, cancellationToken))
+        ?? throw new ValidationException("Choose an existing category.", "invalid_category");
+
     private sealed record ProductFields(
-        string Name, string Slug, string Description, string Category, string Fabric, decimal Price, string CoverImage);
+        string Name, string Slug, string Description, string Fabric, decimal Price, string CoverImage);
 
     private sealed record VariantFields(string Size, string Color, string Sku, int StockQuantity);
 
@@ -180,7 +188,6 @@ public sealed partial class AdminProductAppService(IProductRepository productRep
             throw new ValidationException(
                 $"Description must be at most {Product.MaxDescriptionLength} characters.", "invalid_description");
 
-        var category = Required(dto.Category, Product.MaxCategoryLength, "Category", "invalid_category");
         var fabric = Required(dto.Fabric, Product.MaxFabricLength, "Fabric", "invalid_fabric");
 
         if (dto.Price <= 0 || dto.Price > MaxPrice || decimal.Round(dto.Price, 2) != dto.Price)
@@ -193,7 +200,7 @@ public sealed partial class AdminProductAppService(IProductRepository productRep
             || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
             throw new ValidationException("Cover image must be an absolute http(s) URL.", "invalid_cover_image");
 
-        return new ProductFields(name, slug, description, category, fabric, dto.Price, coverImage);
+        return new ProductFields(name, slug, description, fabric, dto.Price, coverImage);
     }
 
     private static VariantFields ValidateVariant(CreateVariantRequestDto dto)

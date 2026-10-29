@@ -9,7 +9,13 @@ public record ProductListDto
     public Guid Id { get; init; }
     public string Slug { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
+
+    /// <summary>The category's Name, e.g. "Coat" (the value GET /products?category= filters by).</summary>
     public string Category { get; init; } = string.Empty;
+
+    /// <summary>The category's Azerbaijani display name, e.g. "Palto".</summary>
+    public string CategoryLabel { get; init; } = string.Empty;
+
     public decimal BasePrice { get; init; }
 
     /// <summary>Pre-discount price; null when the product is not on sale.</summary>

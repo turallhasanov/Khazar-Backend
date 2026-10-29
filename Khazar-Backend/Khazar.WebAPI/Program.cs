@@ -153,7 +153,7 @@ LogCorsConfiguration(app);
 await app.RunAsync();
 
 // Development only: applies pending migrations (creating the database if it was dropped), seeds the catalog
-// so the frontend has data to work with, and creates the SuperAdmin account if it does not exist. Migrations, not EnsureCreated: a database created by EnsureCreated has
+// and the storefront content so the frontend has data to work with, and creates the SuperAdmin account if it does not exist. Migrations, not EnsureCreated: a database created by EnsureCreated has
 // no migration history, so a later "dotnet ef database update" would fail on the existing tables.
 // A database failure is logged instead of stopping the API, so Swagger stays reachable for diagnosis.
 static async Task InitializeDatabaseAsync(WebApplication app)
@@ -166,6 +166,7 @@ static async Task InitializeDatabaseAsync(WebApplication app)
         var context = scope.ServiceProvider.GetRequiredService<KhazarDbContext>();
         await context.Database.MigrateAsync();
         await KhazarDbInitializer.SeedAsync(context, logger);
+        await SiteContentSeeder.SeedAsync(context, logger);
         await SuperAdminSeeder.SeedAsync(
             context,
             scope.ServiceProvider.GetRequiredService<IPasswordHasher>(),

@@ -14,6 +14,7 @@ public sealed class ProductRepository(KhazarDbContext dbContext)
     public override async Task<IReadOnlyList<Product>> GetAllAsync(CancellationToken cancellationToken = default) =>
         await Set
             .AsNoTracking()
+            .Include(p => p.Category)
             .Include(p => p.Variants.OrderBy(v => v.SortOrder))
             .Where(p => p.IsActive)
             .OrderBy(p => p.Name)
@@ -25,21 +26,25 @@ public sealed class ProductRepository(KhazarDbContext dbContext)
     /// </summary>
     public override async Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await Set
+            .Include(p => p.Category)
             .Include(p => p.Variants.OrderBy(v => v.SortOrder))
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public async Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
         await Set
             .AsNoTracking()
+            .Include(p => p.Category)
             .Include(p => p.Variants.OrderBy(v => v.SortOrder))
             .FirstOrDefaultAsync(p => p.Slug == slug && p.IsActive, cancellationToken);
 
-    // Category comparison relies on the database collation (case-insensitive by default on SQL Server).
+    // Matches the category's Name (the API key, e.g. "Coat"); the comparison relies on the database collation
+    // (case-insensitive by default on SQL Server).
     public async Task<IReadOnlyList<Product>> GetByCategoryAsync(string category, CancellationToken cancellationToken = default) =>
         await Set
             .AsNoTracking()
+            .Include(p => p.Category)
             .Include(p => p.Variants.OrderBy(v => v.SortOrder))
-            .Where(p => p.Category == category && p.IsActive)
+            .Where(p => p.Category.Name == category && p.IsActive)
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
 
@@ -47,6 +52,7 @@ public sealed class ProductRepository(KhazarDbContext dbContext)
     {
         var products = await Set
             .AsNoTracking()
+            .Include(p => p.Category)
             .Include(p => p.Variants.OrderBy(v => v.SortOrder))
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);

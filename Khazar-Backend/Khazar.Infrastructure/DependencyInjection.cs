@@ -27,12 +27,18 @@ public static class DependencyInjection
         services.AddDbContext<KhazarDbContext>(options =>
             options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure()));
 
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IProductReviewRepository, ProductReviewRepository>();
         services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
+        services.AddScoped<IContentSectionRepository, ContentSectionRepository>();
+        services.AddScoped<IJournalArticleRepository, JournalArticleRepository>();
+        services.AddScoped<ILookbookLookRepository, LookbookLookRepository>();
+        services.AddScoped<IFaqItemRepository, FaqItemRepository>();
+        services.AddScoped<IContactMessageRepository, ContactMessageRepository>();
 
         // Settings are validated here, so a missing JWT secret or SMTP host fails at startup.
         services.AddSingleton(JwtOptions.FromConfiguration(configuration));

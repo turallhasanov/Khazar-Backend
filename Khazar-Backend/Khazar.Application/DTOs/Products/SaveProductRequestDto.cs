@@ -9,7 +9,10 @@ public record SaveProductRequestDto
     public string Slug { get; init; } = string.Empty;
 
     public string Description { get; init; } = string.Empty;
-    public string Category { get; init; } = string.Empty;
+
+    /// <summary>Id of an existing category (GET /api/admin/categories).</summary>
+    public Guid CategoryId { get; init; }
+
     public string Fabric { get; init; } = string.Empty;
 
     /// <summary>Price in AZN, at most two decimals.</summary>

@@ -9,7 +9,6 @@ public class Product : BaseEntity
     public const int MaxSlugLength = 200;
     public const int MaxDescriptionLength = 4000;
     public const int MaxFabricLength = 200;
-    public const int MaxCategoryLength = 100;
     public const int MaxCoverImageLength = 1000;
 
     private readonly List<ProductVariant> _variants = [];
@@ -19,8 +18,12 @@ public class Product : BaseEntity
     public string Description { get; private set; } = default!;
     public decimal Price { get; private set; }
     public string Fabric { get; private set; } = default!;
-    public string Category { get; private set; } = default!;
+    public Guid CategoryId { get; private set; }
+    public Category Category { get; private set; } = default!;
     public string CoverImage { get; private set; } = default!;
+
+    /// <summary>Optional second photo (another angle or worn on a model) the storefront card fades to on hover.</summary>
+    public string? HoverImage { get; private set; }
     public bool IsFeatured { get; private set; }
 
     /// <summary>
@@ -40,7 +43,7 @@ public class Product : BaseEntity
         string description,
         decimal price,
         string fabric,
-        string category,
+        Category category,
         string coverImage,
         bool isFeatured = false)
     {
@@ -54,10 +57,17 @@ public class Product : BaseEntity
         string slug,
         string description,
         string fabric,
-        string category,
+        Category category,
         string coverImage)
     {
         SetDetails(name, slug, description, fabric, category, coverImage);
+        MarkUpdated();
+    }
+
+    /// <summary>Sets the hover photo; null or whitespace removes it.</summary>
+    public void SetHoverImage(string? hoverImage)
+    {
+        HoverImage = string.IsNullOrWhiteSpace(hoverImage) ? null : hoverImage.Trim();
         MarkUpdated();
     }
 
@@ -126,14 +136,16 @@ public class Product : BaseEntity
         string slug,
         string description,
         string fabric,
-        string category,
+        Category category,
         string coverImage)
     {
+        ArgumentNullException.ThrowIfNull(category);
         Name = Guard.NotEmpty(name, nameof(Name));
         Slug = Guard.NotEmpty(slug, nameof(Slug)).ToLowerInvariant();
         Description = description?.Trim() ?? string.Empty;
         Fabric = Guard.NotEmpty(fabric, nameof(Fabric));
-        Category = Guard.NotEmpty(category, nameof(Category));
+        Category = category;
+        CategoryId = category.Id;
         CoverImage = Guard.NotEmpty(coverImage, nameof(CoverImage));
     }
 }

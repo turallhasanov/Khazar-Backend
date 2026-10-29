@@ -7,6 +7,7 @@ namespace Khazar.Infrastructure.Persistence.Configurations;
 public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public const string SlugIndexName = "IX_Products_Slug";
+    public const string CategoryForeignKeyName = "FK_Products_Categories_CategoryId";
 
     public void Configure(EntityTypeBuilder<Product> builder)
     {
@@ -21,14 +22,19 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.Description).IsRequired().HasMaxLength(Product.MaxDescriptionLength);
         builder.Property(p => p.Price).HasPrecision(18, 2);
         builder.Property(p => p.Fabric).IsRequired().HasMaxLength(Product.MaxFabricLength);
-        builder.Property(p => p.Category).IsRequired().HasMaxLength(Product.MaxCategoryLength);
         builder.Property(p => p.CoverImage).IsRequired().HasMaxLength(Product.MaxCoverImageLength);
+        builder.Property(p => p.HoverImage).HasMaxLength(Product.MaxCoverImageLength);
 
         // Archived products keep their rows; existing products stay active (the migration's column default is true).
         builder.Property(p => p.IsActive).IsRequired();
 
         builder.HasIndex(p => p.Slug).IsUnique().HasDatabaseName(SlugIndexName);
-        builder.HasIndex(p => p.Category);
+        // Restrict: a category that still has products cannot be deleted (the admin panel moves them first).
+        builder.HasOne(p => p.Category)
+            .WithMany()
+            .HasForeignKey(p => p.CategoryId)
+            .HasConstraintName(CategoryForeignKeyName)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(p => p.Variants)
             .WithOne(v => v.Product)

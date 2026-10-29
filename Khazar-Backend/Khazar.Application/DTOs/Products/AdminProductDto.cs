@@ -7,7 +7,12 @@ public sealed record AdminProductDto
     public string Name { get; init; } = string.Empty;
     public string Slug { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
+    public Guid CategoryId { get; init; }
+
+    /// <summary>The category's Name, the same value the storefront API returns as "category".</summary>
     public string Category { get; init; } = string.Empty;
+
+    public string CategoryLabel { get; init; } = string.Empty;
     public string Fabric { get; init; } = string.Empty;
     public decimal Price { get; init; }
     public string Currency { get; init; } = string.Empty;
