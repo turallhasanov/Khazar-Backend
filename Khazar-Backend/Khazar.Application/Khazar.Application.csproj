@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Khazar.Application</RootNamespace>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!-- The Application layer depends only on Domain; infrastructure concerns are expressed as interfaces. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Khazar.Domain\Khazar.Domain.csproj" />
+  </ItemGroup>
+
+  <!-- Abstractions only: lets the layer register its own services without depending on a DI container. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+</Project>

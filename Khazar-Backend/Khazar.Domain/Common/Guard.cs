@@ -1,3 +1,5 @@
+using Khazar.Domain.Exceptions;
+
 namespace Khazar.Domain.Common;
 
 internal static class Guard
@@ -28,6 +30,31 @@ internal static class Guard
         if (value <= 0)
             throw new DomainException($"{name} must be greater than zero.");
         return value;
+    }
+
+    public static int InRange(int value, int min, int max, string name)
+    {
+        if (value < min || value > max)
+            throw new DomainException($"{name} must be between {min} and {max}.");
+        return value;
+    }
+
+    public static string MaxLength(string value, int maxLength, string name)
+    {
+        if (value.Length > maxLength)
+            throw new DomainException($"{name} cannot be longer than {maxLength} characters.");
+        return value;
+    }
+
+    /// <summary>Validates the basic shape of an email address and returns it trimmed and lower-cased.</summary>
+    public static string Email(string? value, string name)
+    {
+        var email = NotEmpty(value, name);
+        var at = email.IndexOf('@');
+        if (at <= 0 || at != email.LastIndexOf('@') || at == email.Length - 1)
+            throw new DomainException("Invalid email address.");
+
+        return email.ToLowerInvariant();
     }
 
     public static Guid NotEmpty(Guid value, string name)

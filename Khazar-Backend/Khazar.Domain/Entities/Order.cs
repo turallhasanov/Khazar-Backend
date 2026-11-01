@@ -1,5 +1,7 @@
 using Khazar.Domain.Common;
 using Khazar.Domain.Enums;
+using Khazar.Domain.Exceptions;
+using Khazar.Domain.ValueObjects;
 
 namespace Khazar.Domain.Entities;
 
@@ -16,21 +18,25 @@ public class Order : BaseEntity
     public string OrderNumber { get; private set; } = default!;
     public string CustomerName { get; private set; } = default!;
     public string CustomerEmail { get; private set; } = default!;
+
+    /// <summary>The signed-in customer who placed the order; null for guest checkouts.</summary>
+    public Guid? UserId { get; private set; }
     public decimal TotalAmount { get; private set; }
     public OrderStatus Status { get; private set; }
-    public string ShippingAddress { get; private set; } = default!;
+    public Address ShippingAddress { get; private set; } = default!;
 
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
 
     // Required by ORMs
     private Order() { }
 
-    public Order(string customerName, string customerEmail, string shippingAddress)
+    public Order(string customerName, string customerEmail, Address shippingAddress, Guid? userId = null)
     {
         OrderNumber = GenerateOrderNumber();
         CustomerName = Guard.NotEmpty(customerName, nameof(CustomerName));
-        CustomerEmail = NormalizeEmail(customerEmail);
-        ShippingAddress = Guard.NotEmpty(shippingAddress, nameof(ShippingAddress));
+        CustomerEmail = Guard.Email(customerEmail, nameof(CustomerEmail));
+        UserId = userId is { } id ? Guard.NotEmpty(id, nameof(UserId)) : null;
+        ShippingAddress = shippingAddress ?? throw new DomainException("Shipping address is required.");
         Status = OrderStatus.Pending;
     }
 
@@ -84,10 +90,10 @@ public class Order : BaseEntity
         RecalculateTotal();
     }
 
-    public void UpdateShippingAddress(string shippingAddress)
+    public void UpdateShippingAddress(Address shippingAddress)
     {
         EnsureStatus(OrderStatus.Pending);
-        ShippingAddress = Guard.NotEmpty(shippingAddress, nameof(ShippingAddress));
+        ShippingAddress = shippingAddress ?? throw new DomainException("Shipping address is required.");
         MarkUpdated();
     }
 
@@ -137,15 +143,5 @@ public class Order : BaseEntity
         if (Status != expected)
             throw new DomainException(
                 $"This operation requires order status {expected}; current status: {Status}.");
-    }
-
-    private static string NormalizeEmail(string email)
-    {
-        var value = Guard.NotEmpty(email, nameof(CustomerEmail));
-        var at = value.IndexOf('@');
-        if (at <= 0 || at != value.LastIndexOf('@') || at == value.Length - 1)
-            throw new DomainException("Invalid email address.");
-
-        return value.ToLowerInvariant();
     }
 }
