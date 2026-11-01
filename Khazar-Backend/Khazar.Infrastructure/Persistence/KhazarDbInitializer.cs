@@ -1,4 +1,4 @@
-using Khazar.Domain.Entities;
+﻿using Khazar.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -94,11 +94,14 @@ public static class KhazarDbInitializer
             }
         }
 
+        if (GallerySeed.TryGetValue(seed.Slug, out var gallery))
+            product.ReplaceImages(gallery.Select(photo => (UnsplashImage(photo.PhotoId), (string?)photo.Color)).ToList());
+
         return product;
     }
 
-    private static string UnsplashImage(string photoId) =>
-        $"https://images.unsplash.com/photo-{photoId}?auto=format&fit=crop&w=900&q=80";
+    /// <summary>A launch photo in wwwroot/images, named after its Unsplash photo id.</summary>
+    private static string UnsplashImage(string photoId) => $"/images/photo-{photoId}.jpg";
 
     /// <summary>
     /// One catalog entry. Category is a <see cref="CategorySeed"/> Name. IsFeatured maps to the storefront's isBestseller
@@ -134,6 +137,24 @@ public static class KhazarDbInitializer
         new("Longsleeve", "Longsleeve", "longsleeve", 50),
         new("Coat", "Palto", "palto", 60),
     ];
+
+    /// <summary>
+    /// The launch gallery of each product, in display order, with the variant color each photo shows. It replaces the
+    /// CoverImageId / HoverImageId pair, which only an older database still holds until an admin edits the product.
+    /// </summary>
+    private static readonly Dictionary<string, (string PhotoId, string Color)[]> GallerySeed = new(StringComparer.Ordinal)
+    {
+        ["double-face-coat"] = [("1678700266327-8959be9622fd", "Dəvə"), ("1539533113208-f6df8cc8b543", "Dəvə"), ("1705798543468-5b951da25e1e", "Qara")],
+        ["essential-oversize-t-shirt"] = [("1663573689907-23811551910b", "Ağ"), ("1661181475147-bbd20ef65781", "Ağ"), ("1789110854055-fc924935fd09", "Qara")],
+        ["european-cotton-t-shirt"] = [("1574180566232-aaad1b5b8450", "Ağ"), ("1622445272461-c6580cab8755", "Ağ"), ("1781106476595-ac88cc3695f2", "Haki")],
+        ["heavyweight-hoodie"] = [("1607860087860-c46e865f6ab0", "Antrasit"), ("1738486260590-23c954cf29b8", "Krem")],
+        ["merino-longsleeve"] = [("1667829705955-279308e7fc12", "Krem"), ("1752860192499-7320783f73ff", "Krem"), ("1624286922676-24e42c1ceff0", "Tünd yaşıl")],
+        ["minimalist-cargo-pants"] = [("1624043553718-f369dab781aa", "Qum"), ("1699970218723-6cf5e76846ba", "Qum"), ("1700676195086-81b936390de4", "Tünd boz"), ("1700676195099-75103510df39", "Tünd boz")],
+        ["pleated-wide-pants"] = [("1767631338127-8cd80ee2f9df", "Qara"), ("1770909792040-ccfac330491d", "Qara"), ("1755809869478-87cee105dd54", "Boz"), ("1739967347590-ffffc39b1956", "Boz")],
+        ["tailored-wool-coat"] = [("1619603364937-8d7af41ef206", "Dəvə"), ("1619603364904-c0498317e145", "Dəvə"), ("1588621467073-19aa8c4e822c", "Qara")],
+        ["vintage-wash-sweatshirt"] = [("1599363987217-605ae31a9695", "Tozlu mavi"), ("1635367096580-f52cc0964a4b", "Qəhvəyi")],
+        ["zoho-oversize-sweatshirt"] = [("1554568218-9a456cea00cf", "Boz"), ("1709539881608-628392d557af", "Boz"), ("1605122897309-17343bb5bfb8", "Bej"), ("1661110546801-cfe548af5705", "Qara")],
+    };
 
     private static readonly SeedProduct[] CatalogSeed =
     [

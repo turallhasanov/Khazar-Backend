@@ -28,6 +28,7 @@ public static class ContentSchema
         ["faqPage"] = typeof(FaqPageSection),
         ["shipping"] = typeof(ShippingSection),
         ["contact"] = typeof(ContactSection),
+        ["privacy"] = typeof(PrivacySection),
         ["sizeGuide"] = typeof(SizeGuideSection),
         ["search"] = typeof(SearchSection),
     };

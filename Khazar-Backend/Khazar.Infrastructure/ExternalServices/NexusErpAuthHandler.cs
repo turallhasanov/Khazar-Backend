@@ -13,6 +13,9 @@ public sealed class NexusErpAuthHandler(NexusErpTokenProvider tokenProvider) : D
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var token = await tokenProvider.GetTokenAsync(cancellationToken);
+        if (token is null)
+            return Unauthorized(request);
+
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var response = await base.SendAsync(request, cancellationToken);
@@ -22,7 +25,15 @@ public sealed class NexusErpAuthHandler(NexusErpTokenProvider tokenProvider) : D
         response.Dispose();
         tokenProvider.Invalidate(token);
 
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await tokenProvider.GetTokenAsync(cancellationToken));
+        var renewed = await tokenProvider.GetTokenAsync(cancellationToken);
+        if (renewed is null)
+            return Unauthorized(request);
+
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", renewed);
         return await base.SendAsync(request, cancellationToken);
     }
+
+    /// <summary>No token could be obtained: answer 401 locally instead of throwing, so callers see a plain failed call.</summary>
+    private static HttpResponseMessage Unauthorized(HttpRequestMessage request) =>
+        new(HttpStatusCode.Unauthorized) { RequestMessage = request };
 }

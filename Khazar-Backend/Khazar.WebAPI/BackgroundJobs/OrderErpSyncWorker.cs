@@ -1,5 +1,7 @@
 using Khazar.Application.Common.Interfaces;
 using Khazar.Domain.Enums;
+using Khazar.Infrastructure.ExternalServices;
+using Microsoft.Extensions.Options;
 
 namespace Khazar.WebAPI.BackgroundJobs;
 
@@ -11,6 +13,7 @@ namespace Khazar.WebAPI.BackgroundJobs;
 public sealed class OrderErpSyncWorker(
     OrderErpSyncQueue queue,
     IServiceScopeFactory scopeFactory,
+    IOptions<NexusErpOptions> options,
     ILogger<OrderErpSyncWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -53,10 +56,18 @@ public sealed class OrderErpSyncWorker(
         if (order.Status != OrderStatus.Pending)
             return;
 
-        // The client logs the reason of a rejection or transport failure itself.
-        if (!await erpClient.PushOrderToErpAsync(order, cancellationToken))
+        if (!options.Value.SyncEnabled)
         {
-            logger.LogWarning("Order {OrderNumber} was not accepted by NexusERP; it stays Pending.", order.OrderNumber);
+            logger.LogInformation("NexusERP sync is disabled; order {OrderNumber} stays Pending.", order.OrderNumber);
+            return;
+        }
+
+        // The client logs the reason of a rejection or transport failure itself.
+        var push = await erpClient.PushOrderToErpAsync(order, cancellationToken);
+        if (!push.Success)
+        {
+            logger.LogWarning(
+                "Order {OrderNumber} was not accepted by NexusERP and stays Pending: {Reason}", order.OrderNumber, push.Error);
             return;
         }
 

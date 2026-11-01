@@ -24,7 +24,11 @@ public record ProductListDto
     public string Currency { get; init; } = string.Empty;
     public IReadOnlyList<ProductColorDto> Colors { get; init; } = [];
     public IReadOnlyList<string> Sizes { get; init; } = [];
+    /// <summary>Gallery URLs in display order (cover first, hover photo second).</summary>
     public IReadOnlyList<string> Images { get; init; } = [];
+
+    /// <summary>The same photos with the variant color each one shows, for switching photos with the color.</summary>
+    public IReadOnlyList<ProductImageDto> Gallery { get; init; } = [];
     public ProductFabricDto Fabric { get; init; } = new();
 
     /// <summary>Stock per size, summed across colors (e.g. { "M": 20 }).</summary>

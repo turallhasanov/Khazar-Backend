@@ -10,8 +10,9 @@ namespace Khazar.Infrastructure.ExternalServices;
 /// Logs in to NexusERP with the service account and caches the JWT until shortly before it expires.
 /// Registered as a singleton, so every request shares one token; concurrent renewals are serialized,
 /// so an expired token triggers exactly one login.
-/// Login failures are thrown as <see cref="HttpRequestException"/>, which <see cref="NexusErpClient"/>
-/// already treats as "NexusERP unavailable".
+/// A failed login (401, 404, NexusERP down, bad settings) is logged and yields null instead of an exception;
+/// <see cref="NexusErpAuthHandler"/> then answers the call with 401, which <see cref="NexusErpClient"/> treats as
+/// "NexusERP unavailable". After a failure, logins are not retried for <see cref="FailureCooldown"/>.
 /// </summary>
 public sealed class NexusErpTokenProvider(
     IHttpClientFactory httpClientFactory,
@@ -29,10 +30,16 @@ public sealed class NexusErpTokenProvider(
     // Used when the token carries no readable "exp" claim: short enough that a wrong guess costs one extra login.
     private static readonly TimeSpan FallbackLifetime = TimeSpan.FromMinutes(5);
 
+    // Stops every ERP call from hammering the login endpoint while the credentials are wrong or NexusERP is down.
+    private static readonly TimeSpan FailureCooldown = TimeSpan.FromSeconds(30);
+
+    private DateTimeOffset _failedUntil;
+
     private readonly SemaphoreSlim _renewLock = new(1, 1);
     private CachedToken? _cached;
 
-    public async Task<string> GetTokenAsync(CancellationToken cancellationToken)
+    /// <summary>Returns a valid token, or null when NexusERP login is not possible right now.</summary>
+    public async Task<string?> GetTokenAsync(CancellationToken cancellationToken)
     {
         var cached = Volatile.Read(ref _cached);
         if (cached?.IsFresh == true)
@@ -46,7 +53,22 @@ public sealed class NexusErpTokenProvider(
             if (cached?.IsFresh == true)
                 return cached.Value;
 
-            cached = await LoginAsync(cancellationToken);
+            if (DateTimeOffset.UtcNow < _failedUntil)
+                return null;
+
+            try
+            {
+                cached = await LoginAsync(cancellationToken);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException
+                                           && !cancellationToken.IsCancellationRequested)
+            {
+                _failedUntil = DateTimeOffset.UtcNow + FailureCooldown;
+                logger.LogWarning("NexusERP login failed; orders stay Pending and login is retried in {Seconds}s: {Reason}",
+                    FailureCooldown.TotalSeconds, ex.Message);
+                return null;
+            }
+
             Volatile.Write(ref _cached, cached);
             return cached.Value;
         }
@@ -67,14 +89,23 @@ public sealed class NexusErpTokenProvider(
     private async Task<CachedToken> LoginAsync(CancellationToken cancellationToken)
     {
         var settings = options.Value;
+
+        // Reported as "NexusERP unavailable" with the exact setting at fault, instead of failing when the client is built.
+        if (settings.Validate() is { } problem)
+            throw new HttpRequestException(problem);
+
+        // Hardcoded development fallback, used only when the settings carry no credentials.
+        var email = string.IsNullOrWhiteSpace(settings.Email) ? "admin@khazar.az" : settings.Email;
+        var password = string.IsNullOrWhiteSpace(settings.Password) ? "AdminPassword123!" : settings.Password;
+
         var httpClient = httpClientFactory.CreateClient(HttpClientName);
 
         using var response = await httpClient.PostAsJsonAsync(
-            LoginEndpoint, new LoginRequest(settings.Email, settings.Password), cancellationToken);
+            LoginEndpoint, new LoginRequest(email, password), cancellationToken);
 
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException(
-                $"NexusERP login for '{settings.Email}' failed with HTTP {(int)response.StatusCode}.",
+                $"NexusERP login for '{email}' failed with HTTP {(int)response.StatusCode}.",
                 inner: null,
                 response.StatusCode);
 
@@ -86,10 +117,10 @@ public sealed class NexusErpTokenProvider(
         if (string.IsNullOrWhiteSpace(payload.User?.CompanyId))
             logger.LogWarning(
                 "NexusERP account {Email} belongs to no company; NexusERP will reject every sale and stock request.",
-                settings.Email);
+                email);
 
         var expiresAt = ReadExpiry(payload.Token) ?? DateTimeOffset.UtcNow + FallbackLifetime;
-        logger.LogInformation("Logged in to NexusERP as {Email}; token valid until {ExpiresAt:O}.", settings.Email, expiresAt);
+        logger.LogInformation("Logged in to NexusERP as {Email}; token valid until {ExpiresAt:O}.", email, expiresAt);
 
         return new CachedToken(payload.Token, expiresAt);
     }

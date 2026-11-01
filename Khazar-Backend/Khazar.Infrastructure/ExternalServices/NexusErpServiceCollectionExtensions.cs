@@ -27,6 +27,8 @@ public static class NexusErpServiceCollectionExtensions
         services.AddHttpClient<INexusErpClient, NexusErpClient>(ApplyOptions)
             .AddHttpMessageHandler<NexusErpAuthHandler>();
 
+        services.AddScoped<INexusProductSyncService, NexusProductSyncService>();
+
         return services;
     }
 

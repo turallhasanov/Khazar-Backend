@@ -9,6 +9,7 @@ using Khazar.WebAPI.Cors;
 using Khazar.WebAPI.ExceptionHandling;
 using Khazar.WebAPI.HealthChecks;
 using Khazar.WebAPI.Routing;
+using Khazar.WebAPI.Serialization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -44,9 +45,11 @@ builder.Services.AddAuthRateLimiting();
 builder.Services.AddPlatformAdminAuthorization(builder.Configuration);
 
 // Placed orders are pushed to NexusERP by a background worker, so checkout never waits on the ERP.
+builder.Services.AddSingleton<Khazar.WebAPI.Storage.ImageFileStore>();
 builder.Services.AddSingleton<OrderErpSyncQueue>();
 builder.Services.AddSingleton<IOrderErpSyncQueue>(services => services.GetRequiredService<OrderErpSyncQueue>());
 builder.Services.AddHostedService<OrderErpSyncWorker>();
+builder.Services.AddHostedService<OrderErpSyncSweeper>();
 
 // Newsletter welcome, order confirmation and password reset emails are sent by a background worker with retries,
 // so a slow or failing mail server never delays or fails the operation that triggered them.
@@ -56,7 +59,8 @@ builder.Services.AddHostedService<EmailDispatchWorker>();
 
 // Default System.Text.Json settings use camelCase, matching the property names the React frontend reads.
 builder.Services.AddControllers(options =>
-    options.Conventions.Add(new RouteTokenTransformerConvention(new LowercaseParameterTransformer())));
+        options.Conventions.Add(new RouteTokenTransformerConvention(new LowercaseParameterTransformer())))
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -124,6 +128,13 @@ if (app.Environment.IsDevelopment())
 
 // CORS runs before the HTTPS redirect: a redirected preflight (OPTIONS) is rejected by browsers.
 app.UseCors(FrontendCorsExtensions.PolicyName);
+
+// wwwroot/images: product and content photos. File names never change, so browsers may cache them for a long time.
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+        context.Context.Response.Headers.CacheControl = "public,max-age=2592000,immutable",
+});
 
 // Not in Development: the storefront calls http://localhost:5293, and under the "https" launch profile a
 // redirect to https://localhost:7169 is cross-origin, so the browser resends with "Origin: null" and CORS fails.

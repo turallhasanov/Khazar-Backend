@@ -45,5 +45,27 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Navigation(p => p.Variants)
             .HasField("_variants")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Replacing the gallery removes the old rows (required relationship: orphans are deleted).
+        builder.HasMany(p => p.Images)
+            .WithOne()
+            .HasForeignKey(i => i.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(p => p.Images)
+            .HasField("_images")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+}
+
+public sealed class ProductImageConfiguration : IEntityTypeConfiguration<ProductImage>
+{
+    public void Configure(EntityTypeBuilder<ProductImage> builder)
+    {
+        builder.ToTable("ProductImages");
+        builder.HasKey(i => i.Id);
+        builder.Property(i => i.Id).ValueGeneratedNever();
+        builder.Property(i => i.Url).IsRequired().HasMaxLength(ProductImage.MaxUrlLength);
+        builder.Property(i => i.Color).HasMaxLength(ProductVariant.MaxColorLength);
+        builder.HasIndex(i => new { i.ProductId, i.SortOrder });
     }
 }

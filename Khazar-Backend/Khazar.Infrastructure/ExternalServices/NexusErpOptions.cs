@@ -5,6 +5,9 @@ public sealed class NexusErpOptions
 {
     public const string SectionName = "NexusErp";
 
+    /// <summary>When false, placed orders are not pushed to NexusERP and stay Pending until it is enabled.</summary>
+    public bool SyncEnabled { get; set; } = true;
+
     public string BaseUrl { get; set; } = string.Empty;
 
     /// <summary>Service account NexusERP logs in with (POST api/auth/login). It must belong to a company.</summary>
@@ -21,26 +24,36 @@ public sealed class NexusErpOptions
     /// </summary>
     public string? WarehouseId { get; set; }
 
+    /// <summary>Cover image of products the catalog pull adds, until an admin uploads real photos.</summary>
+    public string PlaceholderImageUrl { get; set; } = "/favicon.svg";
+
     /// <summary>Upper bound for a single ERP call; storefront requests must not hang on a slow ERP.</summary>
     public int TimeoutSeconds { get; set; } = 10;
 
-    /// <summary>Validates the settings and applies BaseAddress and Timeout to a NexusERP HttpClient.</summary>
-    internal void ApplyTo(HttpClient httpClient)
+    /// <summary>
+    /// Describes what is wrong with the settings, or null when they are usable. Checked when NexusERP is actually
+    /// called (see <see cref="NexusErpTokenProvider"/>), never when the client is created: the client is a dependency
+    /// of pages that do not talk to NexusERP (e.g. the admin order list), which must work with the ERP unconfigured.
+    /// </summary>
+    internal string? Validate()
     {
-        if (!Uri.TryCreate(BaseUrl, UriKind.Absolute, out var baseUri))
-            throw new InvalidOperationException(
-                $"Configuration value '{SectionName}:{nameof(BaseUrl)}' must be an absolute URL.");
-
-        if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
-            throw new InvalidOperationException(
-                $"Configuration values '{SectionName}:{nameof(Email)}' and '{SectionName}:{nameof(Password)}' are required.");
+        if (!Uri.TryCreate(BaseUrl, UriKind.Absolute, out _))
+            return $"'{SectionName}:{nameof(BaseUrl)}' düzgün mütləq URL olmalıdır.";
 
         if (TimeoutSeconds <= 0)
-            throw new InvalidOperationException(
-                $"Configuration value '{SectionName}:{nameof(TimeoutSeconds)}' must be positive.");
+            return $"'{SectionName}:{nameof(TimeoutSeconds)}' müsbət olmalıdır.";
 
-        // A trailing slash is required, otherwise relative endpoints replace the last path segment of the base URL.
-        httpClient.BaseAddress = baseUri.AbsoluteUri.EndsWith('/') ? baseUri : new Uri(baseUri.AbsoluteUri + "/");
-        httpClient.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
+        return null;
+    }
+
+    /// <summary>Applies BaseAddress and Timeout to a NexusERP HttpClient; settings that are not valid yet are skipped.</summary>
+    internal void ApplyTo(HttpClient httpClient)
+    {
+        if (Uri.TryCreate(BaseUrl, UriKind.Absolute, out var baseUri))
+            // A trailing slash is required, otherwise relative endpoints replace the last path segment of the base URL.
+            httpClient.BaseAddress = baseUri.AbsoluteUri.EndsWith('/') ? baseUri : new Uri(baseUri.AbsoluteUri + "/");
+
+        if (TimeoutSeconds > 0)
+            httpClient.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
     }
 }

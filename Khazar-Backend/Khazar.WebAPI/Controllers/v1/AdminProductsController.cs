@@ -8,7 +8,7 @@ namespace Khazar.WebAPI.Controllers.v1;
 
 /// <summary>
 /// Catalog management for platform admins (accounts listed in "Admin:Emails"). Errors carry an "errorCode" naming
-/// the field or rule: invalid_name, invalid_slug, slug_taken, invalid_price, invalid_cover_image, variants_required,
+/// the field or rule: invalid_name, invalid_slug, slug_taken, invalid_price, invalid_cover_image, invalid_images, invalid_image_color, variants_required,
 /// invalid_sku, sku_taken, variant_exists, invalid_stock, stock_changed, product_has_orders, variant_has_orders,
 /// last_variant.
 /// </summary>

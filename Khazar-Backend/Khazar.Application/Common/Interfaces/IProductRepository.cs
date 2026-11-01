@@ -22,6 +22,9 @@ public interface IProductRepository : IAsyncRepository<Product>
     /// <summary>One product (tracked, for changes) with its review and order facts, or null.</summary>
     Task<ManagedProduct?> GetForAdminByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>Tracked products (archived included) that have a variant with one of the upper-case SKUs.</summary>
+    Task<IReadOnlyList<Product>> GetByVariantSkusAsync(IReadOnlyCollection<string> skus, CancellationToken cancellationToken = default);
+
     Task<bool> SlugExistsAsync(string slug, Guid? exceptProductId = null, CancellationToken cancellationToken = default);
 
     Task<bool> SkuExistsAsync(string sku, CancellationToken cancellationToken = default);

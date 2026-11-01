@@ -18,8 +18,14 @@ public record SaveProductRequestDto
     /// <summary>Price in AZN, at most two decimals.</summary>
     public decimal Price { get; init; }
 
-    /// <summary>Absolute http(s) image URL.</summary>
+    /// <summary>Site path of an uploaded image ("/images/abc.jpg"). Ignored when <see cref="Images"/> is sent (its first photo is the cover).</summary>
     public string CoverImage { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The whole gallery in display order (1–12 photos), replacing the current one. Each color must be one of the
+    /// product's variant colors. Omit to keep a single-photo gallery of <see cref="CoverImage"/> (older clients).
+    /// </summary>
+    public IReadOnlyList<ProductImageDto>? Images { get; init; }
 
     public bool IsFeatured { get; init; }
 }

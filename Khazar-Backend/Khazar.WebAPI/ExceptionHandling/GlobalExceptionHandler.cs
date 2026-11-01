@@ -122,6 +122,7 @@ public sealed class GlobalExceptionHandler(
         UnauthorizedException unauthorized => (StatusCodes.Status401Unauthorized, "Unauthorized", unauthorized.ErrorCode),
         NotFoundException => (StatusCodes.Status404NotFound, "Resource not found", "not_found"),
         ConflictException conflict => (StatusCodes.Status409Conflict, "Conflict", conflict.ErrorCode),
+        ExternalServiceException external => (StatusCodes.Status502BadGateway, "External service failed", external.ErrorCode),
         InsufficientStockException => (StatusCodes.Status409Conflict, "Insufficient stock", "insufficient_stock"),
         DomainException => (StatusCodes.Status400BadRequest, "Business rule violation", "business_rule_violation"),
 

@@ -11,7 +11,10 @@ public class Product : BaseEntity
     public const int MaxFabricLength = 200;
     public const int MaxCoverImageLength = 1000;
 
+    public const int MaxImages = 12;
+
     private readonly List<ProductVariant> _variants = [];
+    private readonly List<ProductImage> _images = [];
 
     public string Name { get; private set; } = default!;
     public string Slug { get; private set; } = default!;
@@ -20,9 +23,10 @@ public class Product : BaseEntity
     public string Fabric { get; private set; } = default!;
     public Guid CategoryId { get; private set; }
     public Category Category { get; private set; } = default!;
+    /// <summary>The gallery's first photo (kept in sync by <see cref="ReplaceImages"/>), used by catalog cards and emails.</summary>
     public string CoverImage { get; private set; } = default!;
 
-    /// <summary>Optional second photo (another angle or worn on a model) the storefront card fades to on hover.</summary>
+    /// <summary>The gallery's second photo, which the storefront card fades to on hover; null with a single photo.</summary>
     public string? HoverImage { get; private set; }
     public bool IsFeatured { get; private set; }
 
@@ -33,6 +37,9 @@ public class Product : BaseEntity
     public bool IsActive { get; private set; } = true;
 
     public IReadOnlyCollection<ProductVariant> Variants => _variants.AsReadOnly();
+
+    /// <summary>The gallery in display order; never empty.</summary>
+    public IReadOnlyCollection<ProductImage> Images => _images.AsReadOnly();
 
     // Required by ORMs
     private Product() { }
@@ -47,7 +54,8 @@ public class Product : BaseEntity
         string coverImage,
         bool isFeatured = false)
     {
-        SetDetails(name, slug, description, fabric, category, coverImage);
+        SetDetails(name, slug, description, fabric, category);
+        ReplaceImages([(coverImage, null)]);
         Price = Guard.NotNegative(price, nameof(Price));
         IsFeatured = isFeatured;
     }
@@ -57,18 +65,40 @@ public class Product : BaseEntity
         string slug,
         string description,
         string fabric,
-        Category category,
-        string coverImage)
+        Category category)
     {
-        SetDetails(name, slug, description, fabric, category, coverImage);
+        SetDetails(name, slug, description, fabric, category);
         MarkUpdated();
     }
 
-    /// <summary>Sets the hover photo; null or whitespace removes it.</summary>
+    /// <summary>
+    /// Replaces the gallery (1 to <see cref="MaxImages"/> photos, in display order). <see cref="CoverImage"/> and
+    /// <see cref="HoverImage"/> follow the first two photos. Colors are not checked here; callers match them to variants.
+    /// </summary>
+    public void ReplaceImages(IReadOnlyList<(string Url, string? Color)> images)
+    {
+        ArgumentNullException.ThrowIfNull(images);
+        if (images.Count is 0 or > MaxImages)
+            throw new DomainException($"A product needs between 1 and {MaxImages} images.");
+
+        _images.Clear();
+        for (var i = 0; i < images.Count; i++)
+            _images.Add(new ProductImage(Id, images[i].Url, images[i].Color, i));
+
+        CoverImage = _images[0].Url;
+        HoverImage = _images.Count > 1 ? _images[1].Url : null;
+        MarkUpdated();
+    }
+
+    /// <summary>Sets the second (hover) photo, keeping the others; null or whitespace removes it.</summary>
     public void SetHoverImage(string? hoverImage)
     {
-        HoverImage = string.IsNullOrWhiteSpace(hoverImage) ? null : hoverImage.Trim();
-        MarkUpdated();
+        var images = _images.OrderBy(i => i.SortOrder).Select(i => (i.Url, i.Color)).ToList();
+        if (images.Count > 1)
+            images.RemoveAt(1);
+        if (!string.IsNullOrWhiteSpace(hoverImage))
+            images.Insert(1, (hoverImage.Trim(), null));
+        ReplaceImages(images);
     }
 
     public void ChangePrice(decimal price)
@@ -136,8 +166,7 @@ public class Product : BaseEntity
         string slug,
         string description,
         string fabric,
-        Category category,
-        string coverImage)
+        Category category)
     {
         ArgumentNullException.ThrowIfNull(category);
         Name = Guard.NotEmpty(name, nameof(Name));
@@ -146,6 +175,5 @@ public class Product : BaseEntity
         Fabric = Guard.NotEmpty(fabric, nameof(Fabric));
         Category = category;
         CategoryId = category.Id;
-        CoverImage = Guard.NotEmpty(coverImage, nameof(CoverImage));
     }
 }

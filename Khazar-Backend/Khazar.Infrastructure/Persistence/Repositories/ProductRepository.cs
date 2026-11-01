@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Khazar.Infrastructure.Persistence.Repositories;
 
-// Variants are always loaded in SortOrder: SQL Server does not guarantee row order otherwise,
+// Variants and gallery images are always loaded in SortOrder: SQL Server does not guarantee row order otherwise,
 // and the storefront relies on the first color being the default selection.
 public sealed class ProductRepository(KhazarDbContext dbContext)
     : BaseRepository<Product>(dbContext), IProductRepository
@@ -16,6 +16,7 @@ public sealed class ProductRepository(KhazarDbContext dbContext)
             .AsNoTracking()
             .Include(p => p.Category)
             .Include(p => p.Variants.OrderBy(v => v.SortOrder))
+            .Include(p => p.Images.OrderBy(i => i.SortOrder))
             .Where(p => p.IsActive)
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
@@ -28,6 +29,7 @@ public sealed class ProductRepository(KhazarDbContext dbContext)
         await Set
             .Include(p => p.Category)
             .Include(p => p.Variants.OrderBy(v => v.SortOrder))
+            .Include(p => p.Images.OrderBy(i => i.SortOrder))
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public async Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
@@ -35,6 +37,7 @@ public sealed class ProductRepository(KhazarDbContext dbContext)
             .AsNoTracking()
             .Include(p => p.Category)
             .Include(p => p.Variants.OrderBy(v => v.SortOrder))
+            .Include(p => p.Images.OrderBy(i => i.SortOrder))
             .FirstOrDefaultAsync(p => p.Slug == slug && p.IsActive, cancellationToken);
 
     // Matches the category's Name (the API key, e.g. "Coat"); the comparison relies on the database collation
@@ -44,8 +47,18 @@ public sealed class ProductRepository(KhazarDbContext dbContext)
             .AsNoTracking()
             .Include(p => p.Category)
             .Include(p => p.Variants.OrderBy(v => v.SortOrder))
+            .Include(p => p.Images.OrderBy(i => i.SortOrder))
             .Where(p => p.Category.Name == category && p.IsActive)
             .OrderBy(p => p.Name)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Product>> GetByVariantSkusAsync(
+        IReadOnlyCollection<string> skus, CancellationToken cancellationToken = default) =>
+        await Set
+            .Include(p => p.Category)
+            .Include(p => p.Variants.OrderBy(v => v.SortOrder))
+            .Include(p => p.Images.OrderBy(i => i.SortOrder))
+            .Where(p => p.Variants.Any(v => skus.Contains(v.SKU)))
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<ManagedProduct>> GetAllForAdminAsync(CancellationToken cancellationToken = default)
@@ -54,6 +67,7 @@ public sealed class ProductRepository(KhazarDbContext dbContext)
             .AsNoTracking()
             .Include(p => p.Category)
             .Include(p => p.Variants.OrderBy(v => v.SortOrder))
+            .Include(p => p.Images.OrderBy(i => i.SortOrder))
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
 

@@ -11,7 +11,8 @@ namespace Khazar.Application.Services;
 public sealed class AdminOrderAppService(
     IOrderRepository orderRepository,
     IProductRepository productRepository,
-    IOrderErpSyncQueue erpSyncQueue) : IAdminOrderAppService
+    IOrderErpSyncQueue erpSyncQueue,
+    INexusErpClient erpClient) : IAdminOrderAppService
 {
     private const string InvalidStatusErrorCode = "invalid_order_status";
 
@@ -29,7 +30,8 @@ public sealed class AdminOrderAppService(
 
         var orders = await orderRepository.GetAllAsync(cancellationToken);
         return orders
-            .Where(order => filter is null || order.Status == filter)
+            // Cancelled orders (what "deleting" an order does) are listed only when asked for with status=Cancelled.
+            .Where(order => filter is null ? order.Status != OrderStatus.Cancelled : order.Status == filter)
             .Select(order => order.ToResponseDto())
             .ToList();
     }
@@ -45,10 +47,41 @@ public sealed class AdminOrderAppService(
         return order.ToResponseDto();
     }
 
-    public async Task<OrderResponseDto> CancelAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<OrderResponseDto> CancelAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await CancelAsync(await LoadAsync(id, cancellationToken), notifyErp: true, cancellationToken);
+
+    public async Task<OrderResponseDto> CancelFromErpAsync(string orderNumber, CancellationToken cancellationToken = default)
     {
-        var order = await LoadAsync(id, cancellationToken);
+        var number = orderNumber?.Trim();
+        var found = string.IsNullOrEmpty(number) ? null : await orderRepository.GetByNumberAsync(number, cancellationToken);
+        var order = found is null
+            ? throw new NotFoundException(nameof(Order), orderNumber ?? string.Empty)
+            : await LoadAsync(found.Id, cancellationToken);
+
+        // NexusERP may repeat the request after a lost response; the stock was already returned the first time.
+        if (order.Status == OrderStatus.Cancelled)
+            return order.ToResponseDto();
+
+        // NexusERP is the one cancelling, so it is not told again.
+        return await CancelAsync(order, notifyErp: false, cancellationToken);
+    }
+
+    private async Task<OrderResponseDto> CancelAsync(Order order, bool notifyErp, CancellationToken cancellationToken)
+    {
+        // Pending orders never reached NexusERP (a failed push leaves them Pending), so only these have a sale to cancel.
+        var inErp = notifyErp && order.Status is OrderStatus.Processing or OrderStatus.SyncedToErp;
         Transition(order, order.Cancel);
+
+        // NexusERP first: if it cannot cancel, nothing changes here either, so the two systems never disagree.
+        // NexusERP returns its own stock; Khazar's stock is restored below.
+        if (inErp)
+        {
+            var cancelled = await erpClient.CancelOrderInErpAsync(order.OrderNumber, cancellationToken);
+            if (!cancelled.Success)
+                throw new ExternalServiceException(
+                    $"Order {order.OrderNumber} was not cancelled in NexusERP, so it was not cancelled here: {cancelled.Error}",
+                    "nexus_cancel_failed");
+        }
 
         // The checkout reserved stock for every line; give it back. Products and the order share the request's
         // DbContext, so the save below commits the stock and the status change together.
@@ -71,6 +104,25 @@ public sealed class AdminOrderAppService(
                 $"Only Pending orders are pushed to NexusERP; this order is {order.Status}.", InvalidStatusErrorCode);
 
         erpSyncQueue.Enqueue(order.Id);
+        return order.ToResponseDto();
+    }
+
+    public async Task<OrderResponseDto> SyncToNexusAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var order = await LoadAsync(id, cancellationToken);
+        if (order.Status != OrderStatus.Pending)
+            throw new ConflictException(
+                $"Only Pending orders are pushed to NexusERP; this order is {order.Status}.", InvalidStatusErrorCode);
+
+        // The client logs the reason (missing StoreId, unknown SKU, HTTP error) itself.
+        var push = await erpClient.PushOrderToErpAsync(order, cancellationToken);
+        if (!push.Success)
+            throw new ExternalServiceException(
+                $"Order {order.OrderNumber} was not accepted by NexusERP: {push.Error}", "nexus_sync_failed");
+
+        order.StartProcessing();
+        order.MarkSyncedToErp();
+        await orderRepository.UpdateAsync(order, cancellationToken);
         return order.ToResponseDto();
     }
 

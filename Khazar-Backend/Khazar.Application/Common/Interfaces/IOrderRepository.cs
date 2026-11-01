@@ -18,6 +18,10 @@ public interface IOrderRepository : IAsyncRepository<Order>
     /// <summary>Finds an order by its public number (KHZ-XXXXX format).</summary>
     Task<Order?> GetByNumberAsync(string orderNumber, CancellationToken cancellationToken = default);
 
+    /// <summary>Ids of orders still Pending that were placed before <paramref name="createdBeforeUtc"/>, oldest first.</summary>
+    Task<IReadOnlyList<Guid>> GetPendingIdsAsync(
+        DateTime createdBeforeUtc, int limit, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// True when a non-cancelled order containing the product was placed by the user, either signed in
     /// (<paramref name="userId"/>) or as a guest with the account's email address (<paramref name="email"/>, lower-case).

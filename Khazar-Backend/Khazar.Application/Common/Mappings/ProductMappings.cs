@@ -25,7 +25,8 @@ public static class ProductMappings
         Currency = DefaultCurrency,
         Colors = MapColors(product),
         Sizes = MapSizes(product),
-        Images = product.HoverImage is null ? [product.CoverImage] : [product.CoverImage, product.HoverImage],
+        Images = MapImages(product).Select(image => image.Url).ToList(),
+        Gallery = MapImages(product),
         Fabric = new ProductFabricDto { Material = product.Fabric },
         Stock = MapStock(product),
         // The storefront's "Bestseller" label and "featured" sort read this flag.
@@ -64,6 +65,7 @@ public static class ProductMappings
             Price = product.Price,
             Currency = DefaultCurrency,
             CoverImage = product.CoverImage,
+            Images = MapImages(product),
             IsFeatured = product.IsFeatured,
             IsActive = product.IsActive,
             TotalStock = product.Variants.Sum(v => v.StockQuantity),
@@ -88,6 +90,15 @@ public static class ProductMappings
 
     public static IReadOnlyList<ProductListDto> ToListDtos(this IEnumerable<Product> products) =>
         products.Select(p => p.ToListDto()).ToList();
+
+    // A product loaded without its gallery (none should be) still shows its cover photo.
+    private static List<ProductImageDto> MapImages(Product product) =>
+        product.Images.Count == 0
+            ? [new ProductImageDto { Url = product.CoverImage }]
+            : product.Images
+                .OrderBy(i => i.SortOrder)
+                .Select(i => new ProductImageDto { Url = i.Url, Color = i.Color })
+                .ToList();
 
     private static List<ProductColorDto> MapColors(Product product) =>
         product.Variants

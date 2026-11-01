@@ -297,6 +297,27 @@ public sealed record SizeGuideSection
     public string ModelNote { get; init; } = string.Empty;
 }
 
+public sealed record PolicyBlock
+{
+    [MaxLength(200)]
+    public string Heading { get; init; } = string.Empty;
+
+    [MaxLength(12)]
+    public List<string> Paragraphs { get; init; } = [];
+}
+
+/// <summary>Privacy policy page (/gizlilik-siyaseti).</summary>
+public sealed record PrivacySection
+{
+    public PageHeader Header { get; init; } = new();
+
+    /// <summary>Shown above the text, e.g. "Son yenilənmə: 31 oktyabr 2026".</summary>
+    public string LastUpdated { get; init; } = string.Empty;
+
+    [MaxLength(20)]
+    public List<PolicyBlock> Blocks { get; init; } = [];
+}
+
 /// <summary>Suggestions shown in the search window before the shopper types.</summary>
 public sealed record SearchSection
 {

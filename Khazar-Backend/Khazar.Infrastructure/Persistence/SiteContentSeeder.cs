@@ -1,4 +1,4 @@
-using Khazar.Application.Content;
+﻿using Khazar.Application.Content;
 using Khazar.Application.DTOs.Content;
 using Khazar.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -46,8 +46,8 @@ public static class SiteContentSeeder
                 freshDatabase ? " with the journal, lookbook and FAQ" : string.Empty);
     }
 
-    private static string Unsplash(string photoId, int width = 900) =>
-        $"https://images.unsplash.com/photo-{photoId}?auto=format&fit=crop&w={width}&q=80";
+    /// <summary>A launch photo in wwwroot/images, named after its Unsplash photo id.</summary>
+    private static string Unsplash(string photoId) => $"/images/photo-{photoId}.jpg";
 
     private static readonly (string Key, object Value)[] Sections =
     [
@@ -62,7 +62,7 @@ public static class SiteContentSeeder
             Email = "hello@khazar.az",
             Address = "Ülviyyə Bünyadova 74, Bakı, Azərbaycan",
             WorkingHours = "B.e. – Şənbə, 10:00 – 20:00",
-            FooterHeading = "Get *in* touch",
+            FooterHeading = "Bizimlə *əlaqə*",
             Copyright = "© 2026 Khazar Textile. Bütün hüquqlar qorunur.",
             FooterNote = "B2B və B2C müştərilərə xidmət göstərilir",
         }),
@@ -76,9 +76,9 @@ public static class SiteContentSeeder
             CtaLabel = "Ölçü Seç",
             SecondaryLinkLabel = "Bütün kolleksiya",
             SecondaryLinkTo = Catalog,
-            ImageUrl = "/media/hero-main.jpg",
+            ImageUrl = "/images/hero-main.jpg",
             ImageAlt = "Khazar FW 2026 — boz oversize sweatshirt və geniş şalvar",
-            SideImageUrl = "/media/hero-side.jpg",
+            SideImageUrl = "/images/hero-side.jpg",
             SideImageAlt = "Khazar — sweatshirt yan profil",
             CaptionLeft = "Look 01",
             CaptionRight = "FW 26",
@@ -107,27 +107,27 @@ public static class SiteContentSeeder
         {
             Lines =
             [
-                "OVERSIZE SWEATSHIRT — *EUROPEAN*",
-                "THREE-THREAD — REINFORCED CUFF",
-                "ELASTIC — *LIMITED NUMBER*",
+                "OVERSIZE SWEATSHIRT — *AVROPA PARÇASI*",
+                "ÜÇ İPLİK TOXUMA — MÖHKƏM MANSET",
+                "ELASTİK FORMA — *LİMİTED SAY*",
             ],
         }),
         ("featureBlocks", new FeatureBlocksSection
         {
             Shipping = new FeatureBlock
             {
-                Title = "SHIPPING",
+                Title = "Çatdırılma",
                 Text = "Bakı daxili 1-2 iş günü, regionlara 3-5 iş günü ərzində çatdırılma. 150 ₼ üzəri sifarişlərdə çatdırılma pulsuzdur.",
                 LinkLabel = "Ətraflı",
                 LinkTo = "/catdirilma-ve-iade",
             },
             Faq = new FeatureBlock
             {
-                Title = "FAQ TOPICS",
+                Title = "Suallar və cavablar",
                 Text = "Ölçü cədvəli, parça qayğısı və geri qaytarma şərtləri haqqında tez-tez verilən suallar.",
                 LinkLabel = "Ətraflı",
                 LinkTo = "/tez-tez-verilen-suallar",
-                ImageUrl = "/media/faq-topics.jpg",
+                ImageUrl = "/images/faq-topics.jpg",
             },
         }),
         ("craftsmanship", new CraftsmanshipSection
@@ -151,7 +151,7 @@ public static class SiteContentSeeder
             Title = "KOLLEKSİYA ’26",
             Subtitle = "Zamansız siluetlər",
             Description = "Hər parça limited seriya, hər siluet illərlə geyiləcək şəkildə qurulub — az, amma daha yaxşı.",
-            CoverImageUrl = Unsplash("1759229874914-c1ffdb3ebd0c", 1600),
+            CoverImageUrl = Unsplash("1759229874914-c1ffdb3ebd0c"),
             CoverImageAlt = "Bej trikotaj sviter geyinmiş model — Khazar kolleksiyası",
         }),
         ("about", new AboutSection
@@ -162,7 +162,7 @@ public static class SiteContentSeeder
                 Title = "Az sayda, yaxşı istehsal",
                 Description = "Khazar hazır geyim markası 2026-cı ildə Bakıda qurulub — zamansız siluetlər, Avropa parça texnologiyası və məsuliyyətli istehsal ilə.",
             },
-            CoverImageUrl = Unsplash("1680835099030-9c7532f744f1", 1600),
+            CoverImageUrl = Unsplash("1680835099030-9c7532f744f1"),
             CoverImageAlt = "Khazar atelyesi — manekenlər və tikiş masaları",
             CoverCaption = "FW 2026 — Limited seriya",
             Quote = "Biz trendlərin arxasınca getmirik. Hər parçanı geyindiyiniz gün deyil, illərlə xidmət edəcəyi şəkildə qururuq.",
@@ -247,10 +247,83 @@ public static class SiteContentSeeder
             ShowroomTitle = "Showroom — Bakı",
             ShowroomNote = "Showroomda kolleksiyaya canlı baxış və ölçü seçimi mümkündür — gəlməzdən əvvəl zəng ilə təsdiq etməyiniz xahiş olunur.",
         }),
+        ("privacy", new PrivacySection
+        {
+            Header = new PageHeader
+            {
+                Eyebrow = "Hüquqi məlumat",
+                Title = "Gizlilik Siyasəti",
+                Description = "Khazar saytından istifadə edərkən hansı məlumatları topladığımızı, onlardan necə istifadə etdiyimizi və hüquqlarınızı izah edirik.",
+            },
+            LastUpdated = "Son yenilənmə: 31 oktyabr 2026",
+            Blocks =
+            [
+                new PolicyBlock
+                {
+                    Heading = "Topladığımız məlumatlar",
+                    Paragraphs =
+                    [
+                        "Hesab: ad, soyad, e-poçt ünvanı və şifrə. Şifrə açıq mətn kimi deyil, geri çevrilməyən heş şəklində saxlanılır.",
+                        "Sifariş: ad, soyad, e-poçt, telefon, çatdırılma ünvanı, seçilmiş məhsullar və ödəniş üsulu.",
+                        "Əlaqə forması: adınız, e-poçtunuz və mesajınız. Xəbər bülleteni: e-poçt ünvanınız. Rəylər: yazdığınız rəy, qiymət və adınızın qısa forması.",
+                    ],
+                },
+                new PolicyBlock
+                {
+                    Heading = "Ödəniş məlumatları",
+                    Paragraphs =
+                    [
+                        "Kart nömrəsi, CVV kodu və kartın digər məlumatları serverlərimizdə saxlanılmır. Sifarişdə yalnız seçdiyiniz ödəniş üsulu qeyd olunur.",
+                    ],
+                },
+                new PolicyBlock
+                {
+                    Heading = "Məlumatlardan necə istifadə edirik",
+                    Paragraphs =
+                    [
+                        "Sifarişləri emal etmək və çatdırmaq, hesabınızı idarə etmək, müraciətlərinizə cavab vermək və sifariş ilə hesabla bağlı e-poçtlar göndərmək üçün.",
+                        "Xəbər bülleteni yalnız abunə olduğunuz halda göndərilir; məktubdakı linklə istənilən vaxt abunəlikdən çıxa bilərsiniz.",
+                    ],
+                },
+                new PolicyBlock
+                {
+                    Heading = "Məlumatların ötürülməsi",
+                    Paragraphs =
+                    [
+                        "Məlumatlarınızı satmırıq. Sifariş məlumatları yalnız sifarişin icrası üçün daxili uçot sistemimizə (NexusERP) və çatdırılma üçün lazım olan tərəflərə ötürülür. Qanunla tələb olunan hallarda səlahiyyətli orqanlara təqdim oluna bilər.",
+                    ],
+                },
+                new PolicyBlock
+                {
+                    Heading = "Brauzerdə saxlanılan məlumatlar",
+                    Paragraphs =
+                    [
+                        "Sayt reklam və izləmə kukiləri işlətmir. Səbətiniz, istək siyahınız və giriş sessiyanız brauzerinizin yerli yaddaşında saxlanılır; onları brauzer ayarlarından silə bilərsiniz.",
+                        "Şriftlər Google Fonts, şəkillər isə kənar şəkil xidmətləri vasitəsilə yüklənir; bu zaman IP ünvanınız həmin xidmətlərə görünə bilər.",
+                    ],
+                },
+                new PolicyBlock
+                {
+                    Heading = "Hüquqlarınız",
+                    Paragraphs =
+                    [
+                        "Haqqınızda saxlanılan məlumatlarla tanış olmağı, onların düzəldilməsini və ya silinməsini tələb edə bilərsiniz. Bunun üçün bizə yazın: hello@khazar.az. Qanunla saxlanılması tələb olunan sifariş qeydləri silinməyə bilər.",
+                    ],
+                },
+                new PolicyBlock
+                {
+                    Heading = "Dəyişikliklər",
+                    Paragraphs =
+                    [
+                        "Bu siyasət yeniləndikdə son variant yenilənmə tarixi ilə birlikdə bu səhifədə dərc olunur.",
+                    ],
+                },
+            ],
+        }),
         ("sizeGuide", new SizeGuideSection
         {
             Eyebrow = "Ölçü bələdçisi",
-            Title = "Beden Ölçü Rehberi",
+            Title = "Ölçü cədvəli",
             Text = "Ölçüləri santimetr cinsində, bədəninizin ən geniş nöqtəsindən alın. Oversize modellərdə bir ölçü kiçik seçmək tövsiyə olunur.",
             Rows =
             [
@@ -273,12 +346,12 @@ public static class SiteContentSeeder
             ContentSchema.Serialize(new List<LookbookHotspotDto> { new() { ProductSlug = slug, X = x, Y = y } });
 
         const string cta = "Kolleksiyanı kəşf et";
-        yield return new LookbookLook("Urban Minimalism", Unsplash("1666443762372-c86511e64151"), cta, Catalog,
-            Hotspot("zoho-oversize-sweatshirt", 48, 44), 10, true);
-        yield return new LookbookLook("Essential Layers", Unsplash("1574201635302-388dd92a4c3f"), cta, Catalog,
-            Hotspot("merino-longsleeve", 50, 46), 20, true);
-        yield return new LookbookLook("Tailored Ease", Unsplash("1633821879282-0c4e91f96232"), cta, Catalog,
-            Hotspot("tailored-wool-coat", 44, 58), 30, true);
+        yield return new LookbookLook("Urban Minimalism", Unsplash("1602092298319-1354f9761afc"), cta, Catalog,
+            Hotspot("zoho-oversize-sweatshirt", 50, 38), 10, true);
+        yield return new LookbookLook("Essential Layers", Unsplash("1719565685362-4646a620d888"), cta, Catalog,
+            Hotspot("merino-longsleeve", 50, 36), 20, true);
+        yield return new LookbookLook("Tailored Ease", Unsplash("1646564200577-9d019b6313d2"), cta, Catalog,
+            Hotspot("tailored-wool-coat", 54, 40), 30, true);
     }
 
     private static IEnumerable<JournalArticle> Articles()

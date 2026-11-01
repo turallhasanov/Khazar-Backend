@@ -45,9 +45,11 @@ public sealed partial class AdminProductAppService(IProductRepository productRep
                 throw SkuTaken(variant.Sku);
         }
 
+        var images = ValidateImages(dto, variants.Select(v => v.Color));
         var product = new Product(
-            fields.Name, fields.Slug, fields.Description, fields.Price, fields.Fabric, category, fields.CoverImage,
+            fields.Name, fields.Slug, fields.Description, fields.Price, fields.Fabric, category, images[0].Url,
             dto.IsFeatured);
+        product.ReplaceImages(images);
         foreach (var variant in variants)
             product.AddVariant(variant.Size, variant.Color, variant.Sku, variant.StockQuantity);
 
@@ -66,7 +68,9 @@ public sealed partial class AdminProductAppService(IProductRepository productRep
             throw SlugTaken();
 
         var product = managed.Product;
-        product.UpdateDetails(fields.Name, fields.Slug, fields.Description, fields.Fabric, category, fields.CoverImage);
+        var images = ValidateImages(dto, product.Variants.Select(v => v.Color));
+        product.UpdateDetails(fields.Name, fields.Slug, fields.Description, fields.Fabric, category);
+        product.ReplaceImages(images);
         if (product.Price != fields.Price)
             product.ChangePrice(fields.Price);
         if (product.IsFeatured != dto.IsFeatured)
@@ -169,8 +173,7 @@ public sealed partial class AdminProductAppService(IProductRepository productRep
         (categoryId == Guid.Empty ? null : await categoryRepository.GetByIdAsync(categoryId, cancellationToken))
         ?? throw new ValidationException("Choose an existing category.", "invalid_category");
 
-    private sealed record ProductFields(
-        string Name, string Slug, string Description, string Fabric, decimal Price, string CoverImage);
+    private sealed record ProductFields(string Name, string Slug, string Description, string Fabric, decimal Price);
 
     private sealed record VariantFields(string Size, string Color, string Sku, int StockQuantity);
 
@@ -194,13 +197,41 @@ public sealed partial class AdminProductAppService(IProductRepository productRep
             throw new ValidationException(
                 $"Price must be greater than 0 and at most {MaxPrice} with up to two decimals.", "invalid_price");
 
-        var coverImage = (dto.CoverImage ?? string.Empty).Trim();
-        if (coverImage.Length > Product.MaxCoverImageLength
-            || !Uri.TryCreate(coverImage, UriKind.Absolute, out var uri)
-            || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
-            throw new ValidationException("Cover image must be an absolute http(s) URL.", "invalid_cover_image");
+        return new ProductFields(name, slug, description, fabric, dto.Price);
+    }
 
-        return new ProductFields(name, slug, description, fabric, dto.Price, coverImage);
+    /// <summary>
+    /// The gallery to store: dto.Images, or a single photo of dto.CoverImage for clients that send no gallery.
+    /// Colors are matched to <paramref name="variantColors"/> case-insensitively and stored in the variant's spelling.
+    /// </summary>
+    private static List<(string Url, string? Color)> ValidateImages(SaveProductRequestDto dto, IEnumerable<string> variantColors)
+    {
+        var requested = dto.Images is { Count: > 0 } images ? images : [new ProductImageDto { Url = dto.CoverImage }];
+        if (requested.Count > Product.MaxImages)
+            throw new ValidationException($"A product can have at most {Product.MaxImages} images.", "invalid_images");
+
+        var colors = variantColors.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var result = new List<(string Url, string? Color)>(requested.Count);
+        foreach (var image in requested)
+        {
+            var url = (image?.Url ?? string.Empty).Trim();
+            if (url.Length > ProductImage.MaxUrlLength || !ImagePathPattern().IsMatch(url))
+                throw new ValidationException(
+                    "Images must be uploaded files with an /images/... or /uploads/products/... path.",
+                    result.Count == 0 ? "invalid_cover_image" : "invalid_images");
+
+            string? color = null;
+            if (!string.IsNullOrWhiteSpace(image!.Color))
+            {
+                color = colors.FirstOrDefault(c => c.Equals(image.Color.Trim(), StringComparison.OrdinalIgnoreCase))
+                    ?? throw new ValidationException(
+                        $"Image color \"{image.Color.Trim()}\" is not one of the product's variant colors.", "invalid_image_color");
+            }
+
+            result.Add((url, color));
+        }
+
+        return result;
     }
 
     private static VariantFields ValidateVariant(CreateVariantRequestDto dto)
@@ -238,6 +269,9 @@ public sealed partial class AdminProductAppService(IProductRepository productRep
 
     private static ConflictException VariantExists() =>
         new("This product already has a variant with this color and size.", "variant_exists");
+
+    [GeneratedRegex(@"^/(?:images|uploads/products)/[A-Za-z0-9][A-Za-z0-9._-]*$")]
+    private static partial Regex ImagePathPattern();
 
     [GeneratedRegex("^[a-z0-9]+(?:-[a-z0-9]+)*$")]
     private static partial Regex SlugPattern();

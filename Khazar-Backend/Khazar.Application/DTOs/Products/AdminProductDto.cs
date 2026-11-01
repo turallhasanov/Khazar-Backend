@@ -17,6 +17,10 @@ public sealed record AdminProductDto
     public decimal Price { get; init; }
     public string Currency { get; init; } = string.Empty;
     public string CoverImage { get; init; } = string.Empty;
+
+    /// <summary>The gallery in display order; the first photo is <see cref="CoverImage"/>.</summary>
+    public IReadOnlyList<ProductImageDto> Images { get; init; } = [];
+
     public bool IsFeatured { get; init; }
 
     /// <summary>False when archived: hidden from the storefront and not orderable.</summary>
