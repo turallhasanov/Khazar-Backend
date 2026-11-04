@@ -14,4 +14,10 @@ public interface IOrderAppService
     Task<OrderResponseDto> CreateOrderAsync(CreateOrderDto dto, CancellationToken cancellationToken = default);
 
     Task<OrderResponseDto?> GetByNumberAsync(string orderNumber, CancellationToken cancellationToken = default);
+
+    /// <summary>The signed-in customer's own orders, newest first.</summary>
+    Task<IReadOnlyList<MyOrderDto>> GetMyOrdersAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>One of the customer's own orders; null when it does not exist or belongs to someone else.</summary>
+    Task<MyOrderDto?> GetMyOrderAsync(Guid userId, string orderNumber, CancellationToken cancellationToken = default);
 }

@@ -82,4 +82,30 @@ public sealed class OrderAppService(
         var order = await orderRepository.GetByNumberAsync(normalized, cancellationToken);
         return order?.ToResponseDto();
     }
+
+    public async Task<IReadOnlyList<MyOrderDto>> GetMyOrdersAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var orders = await orderRepository.GetByUserIdAsync(userId, cancellationToken);
+        var covers = await orderRepository.GetCoverImagesAsync(
+            orders.SelectMany(o => o.Items).Select(i => i.ProductId).Distinct().ToList(), cancellationToken);
+
+        return orders.Select(o => o.ToMyOrderDto(covers)).ToList();
+    }
+
+    public async Task<MyOrderDto?> GetMyOrderAsync(Guid userId, string orderNumber, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(orderNumber))
+            return null;
+
+        var order = await orderRepository.GetByNumberAsync(orderNumber.Trim().TrimStart('#').ToUpperInvariant(), cancellationToken);
+
+        // Someone else's order looks exactly like a missing one.
+        if (order is null || order.UserId != userId)
+            return null;
+
+        var covers = await orderRepository.GetCoverImagesAsync(
+            order.Items.Select(i => i.ProductId).Distinct().ToList(), cancellationToken);
+
+        return order.ToMyOrderDto(covers);
+    }
 }

@@ -32,6 +32,22 @@ public sealed class OrderRepository(KhazarDbContext dbContext)
             .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber, cancellationToken);
 
+    public async Task<IReadOnlyList<Order>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        await Set
+            .AsNoTracking()
+            .Include(o => o.Items)
+            .Where(o => o.UserId == userId)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetCoverImagesAsync(
+        IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken = default) =>
+        await DbContext.Set<Product>()
+            .AsNoTracking()
+            .Where(p => productIds.Contains(p.Id))
+            .Select(p => new { p.Id, p.CoverImage })
+            .ToDictionaryAsync(p => p.Id, p => p.CoverImage, cancellationToken);
+
     public async Task<IReadOnlyList<Guid>> GetPendingIdsAsync(
         DateTime createdBeforeUtc, int limit, CancellationToken cancellationToken = default) =>
         await Set

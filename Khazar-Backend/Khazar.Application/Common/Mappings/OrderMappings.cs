@@ -29,6 +29,30 @@ public static class OrderMappings
         Items = order.Items.Select(i => i.ToItemDto()).ToList(),
     };
 
+    /// <summary>The customer's view of an order; <paramref name="coverImages"/> maps product ids to their cover photo.</summary>
+    public static MyOrderDto ToMyOrderDto(this Order order, IReadOnlyDictionary<Guid, string> coverImages) => new()
+    {
+        Id = order.Id,
+        OrderNumber = order.OrderNumber,
+        Status = order.Status.ToString(),
+        CreatedAt = order.CreatedAt,
+        ShippingAddress = order.ShippingAddress.ToString(),
+        Currency = DefaultCurrency,
+        TotalAmount = order.TotalAmount,
+        ItemCount = order.Items.Sum(i => i.Quantity),
+        Items = order.Items.Select(i => new MyOrderItemDto
+        {
+            ProductId = i.ProductId,
+            Name = i.ProductName,
+            Color = i.Color,
+            Size = i.Size,
+            UnitPrice = i.UnitPrice,
+            Quantity = i.Quantity,
+            LineTotal = i.LineTotal,
+            ImageUrl = coverImages.GetValueOrDefault(i.ProductId),
+        }).ToList(),
+    };
+
     public static OrderItemDto ToItemDto(this OrderItem item) => new()
     {
         Id = item.Id,

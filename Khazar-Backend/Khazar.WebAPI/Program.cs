@@ -2,6 +2,7 @@ using System.Reflection;
 using Khazar.Application;
 using Khazar.Application.Common.Interfaces;
 using Khazar.Infrastructure;
+using Khazar.Infrastructure.Email;
 using Khazar.Infrastructure.Persistence;
 using Khazar.WebAPI.Authentication;
 using Khazar.WebAPI.BackgroundJobs;
@@ -180,6 +181,7 @@ try
     });
 
     LogCorsConfiguration(app);
+    LogEmailDelivery(app);
 
     await app.RunAsync();
 }
@@ -239,4 +241,16 @@ static void LogCorsConfiguration(WebApplication app)
             FrontendCorsExtensions.AllowedOriginsKey);
     else
         app.Logger.LogInformation("CORS enabled for origins: {Origins}.", string.Join(", ", origins));
+}
+
+// With Smtp:DeliveryMethod = Log no email (verification code, password reset, ...) leaves the server, so say so at startup.
+static void LogEmailDelivery(WebApplication app)
+{
+    var smtp = app.Services.GetRequiredService<SmtpOptions>();
+
+    if (smtp.DeliveryMethod == EmailDeliveryMethod.Log)
+        app.Logger.LogWarning("Email delivery is disabled (Smtp:DeliveryMethod = Log): emails are written to the log, not sent.");
+    else
+        app.Logger.LogInformation("Email delivery: SMTP {Host}:{Port} (SSL {EnableSsl}) as {FromEmail}.",
+            smtp.Host, smtp.Port, smtp.EnableSsl, smtp.FromEmail);
 }
