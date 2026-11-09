@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using Khazar.Application.Common;
 using Khazar.Application.Common.Exceptions;
 using Khazar.Application.Common.Interfaces;
 using Khazar.Domain.Entities;
@@ -89,6 +90,14 @@ public sealed partial class NexusProductSyncService(
         if (push.SalePrice < 0)
             throw new ValidationException("The price cannot be negative.", "invalid_price");
 
+        // NexusERP names a variant "Name (Color / Size)"; the storefront shows the clean name and keeps size and color
+        // as the variant's own attributes.
+        var parsed = ProductNameParser.Parse(name);
+        name = parsed.BaseName;
+
+        // The photos in this push, main one first.
+        var newPhotos = (push.ImageUrl is null ? push.GalleryUrls : [push.ImageUrl, .. push.GalleryUrls]).ToList();
+
         var stock = Math.Max(0, push.Stock);
 
         await using var scope = scopeFactory.CreateAsyncScope();
@@ -101,17 +110,25 @@ public sealed partial class NexusProductSyncService(
             if (!push.IsPublished)
                 return new NexusProductPushResult("skipped", null, null, []);
 
+            // "Usaq Hoodie (M)" joins the existing "Usaq Hoodie" card as its M size instead of becoming a second card.
+            if (parsed.HasVariantDetails
+                && await TryAddToFamilyAsync(productRepository, parsed, sku, stock, push.SalePrice, newPhotos, cancellationToken) is { } family)
+                return new NexusProductPushResult("created", family.Slug, push.ImageUrl, SurplusPhotos(newPhotos, family));
+
             var category = await FindOrCreateCategoryAsync(scope.ServiceProvider, push.CategoryName, cancellationToken);
             var slug = await UniqueSlugAsync(productRepository, name, sku, cancellationToken);
 
             var product = new Product(
                 name, slug, string.Empty, push.SalePrice, DefaultFabric, category,
-                push.ImageUrl ?? options.Value.PlaceholderImageUrl);
-            product.AddVariant(DefaultVariantValue, DefaultVariantValue, sku, stock);
+                newPhotos.FirstOrDefault() ?? options.Value.PlaceholderImageUrl);
+            product.AddVariant(parsed.Size ?? DefaultVariantValue, parsed.Color ?? DefaultVariantValue, sku, stock);
+
+            if (newPhotos.Count > 1)
+                product.ReplaceImages(newPhotos.Take(Product.MaxImages).Select(url => (url, (string?)null)).ToList());
 
             await productRepository.AddAsync(product, cancellationToken);
             logger.LogInformation("NexusERP product {Sku} was added to the catalog as {Slug}.", sku, slug);
-            return new NexusProductPushResult("created", slug, push.ImageUrl, []);
+            return new NexusProductPushResult("created", slug, push.ImageUrl, newPhotos.Skip(Product.MaxImages).ToList());
         }
 
         var variant = existing.Variants.First(v => v.SKU == sku);
@@ -132,12 +149,22 @@ public sealed partial class NexusProductSyncService(
         // NexusERP names its products "Name (Color / Size)", so an edit there can change the name. Only a product a push
         // (or the pull) created follows it: its one variant is the default "Standart" one. A Khazar product with real
         // sizes and colors is the same product for all of them, and one variant's name must not rename it.
-        if (existing.Name != name && existing.Variants.Count == 1
+        if (existing.Variants.Count == 1
             && variant.Size.Equals(DefaultVariantValue, StringComparison.OrdinalIgnoreCase)
             && variant.Color.Equals(DefaultVariantValue, StringComparison.OrdinalIgnoreCase))
         {
-            existing.UpdateDetails(name, existing.Slug, existing.Description, existing.Fabric, existing.Category);
-            changed = true;
+            if (existing.Name != name)
+            {
+                existing.UpdateDetails(name, existing.Slug, existing.Description, existing.Fabric, existing.Category);
+                changed = true;
+            }
+
+            // A product created from "Name (S)" before names were split still has the placeholder size.
+            if (parsed.HasVariantDetails)
+            {
+                existing.ChangeVariantAttributes(variant.Id, parsed.Size ?? DefaultVariantValue, parsed.Color ?? DefaultVariantValue);
+                changed = true;
+            }
         }
 
         if (push.IsPublished != existing.IsActive)
@@ -150,20 +177,35 @@ public sealed partial class NexusProductSyncService(
         }
 
         var replaced = new List<string>();
-        if (push.ImageUrl is not null)
+        if (newPhotos.Count > 0)
         {
-            // The new photo goes in front. An earlier NexusERP photo (stored under /uploads/products) is superseded by it,
-            // so saving the same product again never piles up copies; photos from the admin panel (/images/...) and the
-            // placeholder it replaces are not NexusERP's: the first stays, the second goes.
             var placeholder = options.Value.PlaceholderImageUrl;
             var ordered = existing.Images.OrderBy(i => i.SortOrder).ToList();
-            replaced.AddRange(ordered.Where(i => i.Url.StartsWith(UploadedPhotoPrefix, StringComparison.Ordinal)).Select(i => i.Url));
+            List<(string Url, string? Color)> gallery;
 
-            var gallery = new List<(string Url, string? Color)> { (push.ImageUrl, null) };
-            gallery.AddRange(ordered
-                .Where(i => i.Url != placeholder && !i.Url.StartsWith(UploadedPhotoPrefix, StringComparison.Ordinal))
-                .Select(i => (i.Url, i.Color)));
-            existing.ReplaceImages(gallery.Take(Product.MaxImages).ToList());
+            if (push.ImageUrl is not null)
+            {
+                // The new photos go in front. An earlier NexusERP photo (stored under /uploads/products) is superseded by
+                // them, so saving the same product again never piles up copies; photos from the admin panel (/images/...)
+                // and the placeholder it replaces are not NexusERP's: the first stay, the second goes.
+                replaced.AddRange(ordered.Where(i => i.Url.StartsWith(UploadedPhotoPrefix, StringComparison.Ordinal)).Select(i => i.Url));
+
+                gallery = newPhotos.Select(url => (url, (string?)null)).ToList();
+                gallery.AddRange(ordered
+                    .Where(i => i.Url != placeholder && !i.Url.StartsWith(UploadedPhotoPrefix, StringComparison.Ordinal))
+                    .Select(i => (i.Url, i.Color)));
+            }
+            else
+            {
+                // Extra photos only: they follow the ones the product has (the placeholder makes room).
+                gallery = ordered.Where(i => i.Url != placeholder).Select(i => (i.Url, i.Color)).ToList();
+                gallery.AddRange(newPhotos.Select(url => (url, (string?)null)));
+            }
+
+            var kept = gallery.Take(Product.MaxImages).ToList();
+            existing.ReplaceImages(kept);
+            // Photos that did not fit are stored but referenced by nothing.
+            replaced.AddRange(newPhotos.Where(url => kept.All(k => k.Url != url)));
             changed = true;
         }
 
@@ -204,16 +246,62 @@ public sealed partial class NexusProductSyncService(
         }
 
         var category = await FindOrCreateCategoryAsync(scope.ServiceProvider, snapshot.CategoryName, cancellationToken);
-        var slug = await UniqueSlugAsync(productRepository, snapshot.Name, snapshot.Sku, cancellationToken);
+        var parsed = ProductNameParser.Parse(snapshot.Name);
+        if (parsed.HasVariantDetails
+            && await TryAddToFamilyAsync(productRepository, parsed, snapshot.Sku, snapshot.Stock, snapshot.SalePrice, [], cancellationToken) is not null)
+            return Outcome.Created;
+
+        var slug = await UniqueSlugAsync(productRepository, parsed.BaseName, snapshot.Sku, cancellationToken);
 
         var product = new Product(
-            snapshot.Name, slug, string.Empty, snapshot.SalePrice, DefaultFabric, category,
+            parsed.BaseName, slug, string.Empty, snapshot.SalePrice, DefaultFabric, category,
             options.Value.PlaceholderImageUrl);
-        product.AddVariant(DefaultVariantValue, DefaultVariantValue, snapshot.Sku, snapshot.Stock);
+        product.AddVariant(parsed.Size ?? DefaultVariantValue, parsed.Color ?? DefaultVariantValue, snapshot.Sku, snapshot.Stock);
 
         await productRepository.AddAsync(product, cancellationToken);
         return Outcome.Created;
     }
+
+    /// <summary>
+    /// Adds the variant to the active product that already carries the clean name. Returns that product, or null when
+    /// there is none or it already has a variant with the same size and color (then the caller creates a product).
+    /// A variant has no price of its own in the catalog: the product keeps the price it has, and a different one is logged.
+    /// </summary>
+    private async Task<Product?> TryAddToFamilyAsync(
+        IProductRepository productRepository, ParsedProductName parsed, string sku, int stock, decimal salePrice,
+        IReadOnlyList<string> newPhotos, CancellationToken cancellationToken)
+    {
+        var family = await productRepository.GetActiveByNameAsync(parsed.BaseName, cancellationToken);
+        if (family is null)
+            return null;
+
+        var size = parsed.Size ?? DefaultVariantValue;
+        var color = parsed.Color ?? DefaultVariantValue;
+
+        if (family.Variants.Any(v => v.Size.Equals(size, StringComparison.OrdinalIgnoreCase)
+                                     && v.Color.Equals(color, StringComparison.OrdinalIgnoreCase)))
+            return null;
+
+        family.AddVariant(size, color, sku, stock);
+
+        if (newPhotos.Count > 0)
+            family.ReplaceImages(family.Images.OrderBy(i => i.SortOrder).Select(i => (i.Url, i.Color))
+                .Concat(newPhotos.Select(url => (url, parsed.Color))).Take(Product.MaxImages).ToList());
+
+        await productRepository.UpdateAsync(family, cancellationToken);
+
+        if (family.Price != salePrice)
+            logger.LogWarning(
+                "NexusERP variant {Sku} costs {Incoming} but {Product} keeps its price {Price}: the catalog has one price per product.",
+                sku, salePrice, family.Name, family.Price);
+
+        logger.LogInformation("NexusERP variant {Sku} ({Size}/{Color}) was added to the existing product {Slug}.", sku, size, color, family.Slug);
+        return family;
+    }
+
+    /// <summary>Photos of this push the product's gallery had no room for.</summary>
+    private static List<string> SurplusPhotos(IReadOnlyList<string> newPhotos, Product product) =>
+        newPhotos.Where(url => product.Images.All(image => image.Url != url)).ToList();
 
     private static async Task<Category> FindOrCreateCategoryAsync(
         IServiceProvider services, string? name, CancellationToken cancellationToken)

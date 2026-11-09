@@ -52,7 +52,8 @@ public sealed class NexusErpClientContractTests : IDisposable
         _db.AddRange(category, product);
         await _db.SaveChangesAsync();
 
-        var order = new Order("Leyla Həsənova", "leyla@example.az", new Address("Nizami 10", "Bakı", "AZ1000", "Azərbaycan"));
+        var order = new Order("Leyla Həsənova", "leyla@example.az", new Address("Nizami 10", "Bakı", "AZ1000", "Azərbaycan"),
+            customerPhone: "+994 50 123 45 67");
         order.AddItem(variant, product.Name, 149.90m, 2);
         return (order, variant);
     }
@@ -167,6 +168,7 @@ public sealed class NexusErpClientContractTests : IDisposable
         body["customer"]!["fullName"]!.GetValue<string>().Should().Be("Leyla Həsənova");
         body["customer"]!["email"]!.GetValue<string>().Should().Be("leyla@example.az");
         body["customer"]!["address"]!.GetValue<string>().Should().Be("Nizami 10, Bakı AZ1000, Azərbaycan");
+        body["customer"]!["phone"]!.GetValue<string>().Should().Be("+994 50 123 45 67");
         var line = body["items"]!.AsArray().Single()!;
         line["productId"]!.GetValue<string>().Should().Be("p-1");
         line["quantity"]!.GetValue<decimal>().Should().Be(2);

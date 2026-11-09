@@ -16,6 +16,7 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.OrderNumber).IsRequired().HasMaxLength(16);
         builder.Property(o => o.CustomerName).IsRequired().HasMaxLength(200);
         builder.Property(o => o.CustomerEmail).IsRequired().HasMaxLength(320);
+        builder.Property(o => o.CustomerPhone).HasMaxLength(Order.MaxPhoneLength);
         builder.Property(o => o.TotalAmount).HasPrecision(18, 2);
 
         // Stored as text so the column stays readable and enum reordering cannot corrupt data.

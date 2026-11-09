@@ -35,6 +35,14 @@ public class ProductVariant : BaseEntity
         SortOrder = Guard.NotNegative(sortOrder, nameof(SortOrder));
     }
 
+    /// <summary>Renames the variant's size and color. The SKU, which NexusERP matches on, never changes.</summary>
+    internal void ChangeAttributes(string size, string color)
+    {
+        Size = Guard.MaxLength(Guard.NotEmpty(size, nameof(Size)), MaxSizeLength, nameof(Size));
+        Color = Guard.MaxLength(Guard.NotEmpty(color, nameof(Color)), MaxColorLength, nameof(Color));
+        MarkUpdated();
+    }
+
     public void SetStock(int quantity)
     {
         StockQuantity = Guard.NotNegative(quantity, nameof(StockQuantity));

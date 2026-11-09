@@ -33,8 +33,8 @@ public sealed class KhazarApiFactory : WebApplicationFactory<ProductsController>
 
         // Serilog's file sink (WriteTo index 1 in appsettings.json) writes to a temp folder, not Khazar.WebAPI/logs;
         // shared, since several test hosts log at once.
-        Environment.SetEnvironmentVariable("Serilog__WriteTo__1__Args__path", Path.Combine(Path.GetTempPath(), "khazar-tests", "logs", "khazar-.txt"));
-        Environment.SetEnvironmentVariable("Serilog__WriteTo__1__Args__shared", "true");
+        Environment.SetEnvironmentVariable("Serilog__WriteTo__1__Args__configure__0__Args__path", Path.Combine(Path.GetTempPath(), "khazar-tests", "logs", "khazar-.txt"));
+        Environment.SetEnvironmentVariable("Serilog__WriteTo__1__Args__configure__0__Args__shared", "true");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

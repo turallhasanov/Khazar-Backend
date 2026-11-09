@@ -61,6 +61,19 @@ public sealed class ProductRepository(KhazarDbContext dbContext)
             .Where(p => p.Variants.Any(v => skus.Contains(v.SKU)))
             .ToListAsync(cancellationToken);
 
+    public async Task<Product?> GetActiveByNameAsync(string name, CancellationToken cancellationToken = default)
+    {
+        var wanted = name.Trim().ToLower();
+
+        return await Set
+            .Include(p => p.Category)
+            .Include(p => p.Variants.OrderBy(v => v.SortOrder))
+            .Include(p => p.Images.OrderBy(i => i.SortOrder))
+            .Where(p => p.IsActive && p.Name.ToLower() == wanted)
+            .OrderBy(p => p.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<ManagedProduct>> GetAllForAdminAsync(CancellationToken cancellationToken = default)
     {
         var products = await Set
