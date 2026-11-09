@@ -2,10 +2,11 @@ using Khazar.Application.Common.Interfaces;
 using Khazar.Domain.Entities;
 using Khazar.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Khazar.Infrastructure.Persistence.Repositories;
 
-public sealed class OrderRepository(KhazarDbContext dbContext)
+public sealed class OrderRepository(KhazarDbContext dbContext, ILogger<OrderRepository> logger)
     : BaseRepository<Order>(dbContext), IOrderRepository
 {
     // A collision on a 5-character code from a 32-symbol alphabet is rare; a few retries are plenty.
@@ -31,6 +32,22 @@ public sealed class OrderRepository(KhazarDbContext dbContext)
             .AsNoTracking()
             .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber, cancellationToken);
+
+    public async Task<IReadOnlyList<Order>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        await Set
+            .AsNoTracking()
+            .Include(o => o.Items)
+            .Where(o => o.UserId == userId)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetCoverImagesAsync(
+        IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken = default) =>
+        await DbContext.Set<Product>()
+            .AsNoTracking()
+            .Where(p => productIds.Contains(p.Id))
+            .Select(p => new { p.Id, p.CoverImage })
+            .ToDictionaryAsync(p => p.Id, p => p.CoverImage, cancellationToken);
 
     public async Task<IReadOnlyList<Guid>> GetPendingIdsAsync(
         DateTime createdBeforeUtc, int limit, CancellationToken cancellationToken = default) =>
@@ -69,6 +86,16 @@ public sealed class OrderRepository(KhazarDbContext dbContext)
             {
                 // A failed save leaves the change tracker untouched, so only the number needs to change.
                 order.RegenerateOrderNumber();
+            }
+            catch (DbUpdateException ex)
+            {
+                // The request ends as a 500 (GlobalExceptionHandler); this line says which order and whose, with the
+                // database's own reason (a missing column after a model change, a too-long value, ...).
+                logger.LogError(ex,
+                    "Order creation failed for user {UserId} (order {OrderNumber}, {ItemCount} item(s), email {Email}, phone {HasPhone}): {Reason}",
+                    order.UserId, order.OrderNumber, order.Items.Count, order.CustomerEmail,
+                    order.CustomerPhone is null ? "none" : "given", ex.GetBaseException().Message);
+                throw;
             }
         }
     }

@@ -91,7 +91,7 @@ public sealed class IntegrationController(
     /// <response code="404">No Integration:ApiKey is configured.</response>
     [HttpPost("products")]
     [Consumes("multipart/form-data")]
-    [RequestSizeLimit(ImageFileStore.MaxFileBytes + 64 * 1024)]
+    [RequestSizeLimit(ImageFileStore.MaxFileBytes * (1 + IntegrationProductForm.MaxGalleryImages) + 64 * 1024)]
     [ProducesResponseType<NexusProductPushResult>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -101,14 +101,27 @@ public sealed class IntegrationController(
         if (CheckApiKey() is { } rejected)
             return rejected;
 
+        var galleryFiles = form.GalleryImages?.Where(file => file.Length > 0).ToList() ?? [];
+        if (galleryFiles.Count > IntegrationProductForm.MaxGalleryImages)
+            throw new Khazar.Application.Common.Exceptions.ValidationException(
+                $"At most {IntegrationProductForm.MaxGalleryImages} extra photos can be sent with a product.", "too_many_images");
+
         string? imageUrl = null;
-        if (form.Image is { Length: > 0 })
-            imageUrl = await imageStore.SaveAsync(form.Image, ImageFileStore.ProductUploadsFolder, cancellationToken);
+        var galleryUrls = new List<string>();
 
         try
         {
+            if (form.Image is { Length: > 0 })
+                imageUrl = await imageStore.SaveAsync(form.Image, ImageFileStore.ProductUploadsFolder, cancellationToken);
+
+            foreach (var file in galleryFiles)
+                galleryUrls.Add(await imageStore.SaveAsync(file, ImageFileStore.ProductUploadsFolder, cancellationToken));
+
             var result = await productSyncService.PushProductAsync(
-                new NexusProductPush(form.Sku, form.Name, form.CategoryName, form.SalePrice, form.Stock, form.IsPublished, imageUrl),
+                new NexusProductPush(form.Sku, form.Name, form.CategoryName, form.SalePrice, form.Stock, form.IsPublished, imageUrl)
+                {
+                    GalleryUrls = galleryUrls,
+                },
                 cancellationToken);
 
             // The product no longer shows the photos the new one replaced.
@@ -119,9 +132,11 @@ public sealed class IntegrationController(
         }
         catch
         {
-            // The product was refused, so the photo that came with it would only be left behind.
+            // The product was refused, so the photos that came with it would only be left behind.
             if (imageUrl is not null)
                 imageStore.TryDelete(imageUrl);
+            foreach (var url in galleryUrls)
+                imageStore.TryDelete(url);
             throw;
         }
     }
@@ -143,6 +158,9 @@ public sealed class IntegrationController(
 /// <summary>Body of POST api/integration/products (multipart/form-data).</summary>
 public sealed class IntegrationProductForm
 {
+    /// <summary>Photos beyond the main one; the gallery holds at most 12 in all.</summary>
+    public const int MaxGalleryImages = 7;
+
     public string Sku { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string? CategoryName { get; init; }
@@ -150,6 +168,9 @@ public sealed class IntegrationProductForm
     public int Stock { get; init; }
     public bool IsPublished { get; init; }
     public IFormFile? Image { get; init; }
+
+    /// <summary>Further photos, in display order after <see cref="Image"/>.</summary>
+    public IFormFileCollection? GalleryImages { get; init; }
 }
 
 public sealed record IntegrationCatalogItemDto(

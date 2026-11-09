@@ -166,7 +166,7 @@ public sealed class NexusErpClient : INexusErpClient
                 storeId.Id!,
                 WarehouseId,
                 order.CreatedAt,
-                new RetailCustomer(order.CustomerName, order.CustomerEmail, order.ShippingAddress.ToString()),
+                new RetailCustomer(order.CustomerName, order.CustomerEmail, order.ShippingAddress.ToString(), order.CustomerPhone),
                 lines);
 
             using var response = await _httpClient.PostAsJsonAsync(OnlineOrdersEndpoint, request, cancellationToken);
@@ -448,8 +448,8 @@ public sealed class NexusErpClient : INexusErpClient
         RetailCustomer Customer,
         IReadOnlyList<SaleItemRequest> Items);
 
-    // Khazar keeps one name field and no phone yet; NexusERP also accepts firstName/lastName and phone.
-    private sealed record RetailCustomer(string FullName, string Email, string Address);
+    // Khazar keeps one name field; NexusERP also accepts firstName/lastName. Phone is null for older orders.
+    private sealed record RetailCustomer(string FullName, string Email, string Address, string? Phone);
 
     private sealed record SaleItemRequest(string ProductId, decimal Quantity, decimal UnitPrice);
 

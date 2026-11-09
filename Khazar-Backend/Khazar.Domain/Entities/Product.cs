@@ -151,6 +151,21 @@ public class Product : BaseEntity
         return variant;
     }
 
+    /// <summary>Changes a variant's size and color; the pair must stay unique within the product.</summary>
+    public void ChangeVariantAttributes(Guid variantId, string size, string color)
+    {
+        var variant = _variants.FirstOrDefault(v => v.Id == variantId)
+            ?? throw new DomainException("Variant not found.");
+
+        if (_variants.Any(v => v.Id != variantId
+                               && v.Color.Equals(color?.Trim(), StringComparison.OrdinalIgnoreCase)
+                               && v.Size.Equals(size?.Trim(), StringComparison.OrdinalIgnoreCase)))
+            throw new DomainException($"A variant with color '{color}' and size '{size}' already exists on this product.");
+
+        variant.ChangeAttributes(size?.Trim() ?? string.Empty, color?.Trim() ?? string.Empty);
+        MarkUpdated();
+    }
+
     /// <summary>Removes a variant. Callers must first make sure no order references it.</summary>
     public void RemoveVariant(Guid variantId)
     {

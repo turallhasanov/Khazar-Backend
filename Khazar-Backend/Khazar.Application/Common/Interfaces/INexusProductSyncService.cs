@@ -21,7 +21,14 @@ public interface INexusProductSyncService
 
 /// <summary>A product as NexusERP sends it. <paramref name="ImageUrl"/> is a site path already stored by Khazar.</summary>
 public sealed record NexusProductPush(
-    string Sku, string Name, string? CategoryName, decimal SalePrice, int Stock, bool IsPublished, string? ImageUrl);
+    string Sku, string Name, string? CategoryName, decimal SalePrice, int Stock, bool IsPublished, string? ImageUrl)
+{
+    /// <summary>
+    /// Further photos NexusERP sent with the product, already stored by Khazar. With <see cref="ImageUrl"/> they follow it
+    /// in the gallery; without it they are added after the photos the product already has.
+    /// </summary>
+    public IReadOnlyList<string> GalleryUrls { get; init; } = [];
+}
 
 /// <summary>
 /// <paramref name="Outcome"/> is "created", "updated", "unchanged" or "skipped". <paramref name="ReplacedImageUrls"/> are

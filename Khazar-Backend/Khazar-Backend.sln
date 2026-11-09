@@ -11,6 +11,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Khazar.Infrastructure", "Kh
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Khazar.WebAPI", "Khazar.WebAPI\Khazar.WebAPI.csproj", "{16F0474C-2953-456B-A4B4-56637F4D49D3}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Khazar.WebAPI.Tests", "Khazar.WebAPI.Tests\Khazar.WebAPI.Tests.csproj", "{284E0CDB-EED1-48B9-B86C-34FE16237907}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,9 +73,24 @@ Global
 		{16F0474C-2953-456B-A4B4-56637F4D49D3}.Release|x64.Build.0 = Release|Any CPU
 		{16F0474C-2953-456B-A4B4-56637F4D49D3}.Release|x86.ActiveCfg = Release|Any CPU
 		{16F0474C-2953-456B-A4B4-56637F4D49D3}.Release|x86.Build.0 = Release|Any CPU
+		{284E0CDB-EED1-48B9-B86C-34FE16237907}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{284E0CDB-EED1-48B9-B86C-34FE16237907}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{284E0CDB-EED1-48B9-B86C-34FE16237907}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{284E0CDB-EED1-48B9-B86C-34FE16237907}.Debug|x64.Build.0 = Debug|Any CPU
+		{284E0CDB-EED1-48B9-B86C-34FE16237907}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{284E0CDB-EED1-48B9-B86C-34FE16237907}.Debug|x86.Build.0 = Debug|Any CPU
+		{284E0CDB-EED1-48B9-B86C-34FE16237907}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{284E0CDB-EED1-48B9-B86C-34FE16237907}.Release|Any CPU.Build.0 = Release|Any CPU
+		{284E0CDB-EED1-48B9-B86C-34FE16237907}.Release|x64.ActiveCfg = Release|Any CPU
+		{284E0CDB-EED1-48B9-B86C-34FE16237907}.Release|x64.Build.0 = Release|Any CPU
+		{284E0CDB-EED1-48B9-B86C-34FE16237907}.Release|x86.ActiveCfg = Release|Any CPU
+		{284E0CDB-EED1-48B9-B86C-34FE16237907}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{284E0CDB-EED1-48B9-B86C-34FE16237907} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4C9504EB-BA30-423E-AC20-2D6F0D90D92F}

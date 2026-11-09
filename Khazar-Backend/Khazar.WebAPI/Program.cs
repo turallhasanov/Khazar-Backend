@@ -2,12 +2,14 @@ using System.Reflection;
 using Khazar.Application;
 using Khazar.Application.Common.Interfaces;
 using Khazar.Infrastructure;
+using Khazar.Infrastructure.Email;
 using Khazar.Infrastructure.Persistence;
 using Khazar.WebAPI.Authentication;
 using Khazar.WebAPI.BackgroundJobs;
 using Khazar.WebAPI.Cors;
 using Khazar.WebAPI.ExceptionHandling;
 using Khazar.WebAPI.HealthChecks;
+using Khazar.WebAPI.Logging;
 using Khazar.WebAPI.Routing;
 using Khazar.WebAPI.Serialization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -16,152 +18,188 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
+using Serilog;
 
 const string LiveTag = "live";
 const string ReadyTag = "ready";
 
-var builder = WebApplication.CreateBuilder(args);
+// Until the configuration is read, a startup failure is still written to the console.
+Log.Logger = SerilogSetup.CreateBootstrapLogger();
 
-// Fail at startup, in every environment, when a registration is missing or a scoped service
-// is captured by a singleton, instead of on the first request that resolves it.
-builder.Host.UseDefaultServiceProvider(options =>
+// WebApplicationFactory (integration tests) and dotnet-ef stop this entry point with HostAbortedException once the
+// host is built; that host keeps running and writes through the logger, so the logger must not be closed then.
+var hostAborted = false;
+
+try
 {
-    options.ValidateOnBuild = true;
-    options.ValidateScopes = true;
-});
+    var builder = WebApplication.CreateBuilder(args);
 
-// Composition root: each layer registers its own services.
-// Application: product, order and auth use cases.
-builder.Services.AddApplicationServices();
+    // Every ILogger<T> (services, GlobalExceptionHandler, ...) writes through Serilog: the console and
+    // logs/khazar-<yyyyMMdd>.txt, a new file each day, 30 kept (the "Serilog" section of appsettings.json).
+    Log.Logger = SerilogSetup.CreateLogger(builder.Configuration, builder.Environment);
+    builder.Services.AddSerilog(Log.Logger);
 
-// Infrastructure: DbContext, repositories, JWT issuing, password hashing, email and the NexusERP client.
-builder.Services.AddInfrastructureServices(builder.Configuration);
-
-// JWT bearer validation, the current-user accessor and per-IP limits on the auth and public form endpoints.
-builder.Services.AddJwtAuthentication();
-builder.Services.AddAuthRateLimiting();
-
-// /api/admin endpoints: signed-in users whose email is listed in "Admin:Emails".
-builder.Services.AddPlatformAdminAuthorization(builder.Configuration);
-
-// Placed orders are pushed to NexusERP by a background worker, so checkout never waits on the ERP.
-builder.Services.AddSingleton<Khazar.WebAPI.Storage.ImageFileStore>();
-builder.Services.AddSingleton<OrderErpSyncQueue>();
-builder.Services.AddSingleton<IOrderErpSyncQueue>(services => services.GetRequiredService<OrderErpSyncQueue>());
-builder.Services.AddHostedService<OrderErpSyncWorker>();
-builder.Services.AddHostedService<OrderErpSyncSweeper>();
-
-// Newsletter welcome, order confirmation and password reset emails are sent by a background worker with retries,
-// so a slow or failing mail server never delays or fails the operation that triggered them.
-builder.Services.AddSingleton<BackgroundEmailQueue>();
-builder.Services.AddSingleton<IBackgroundEmailQueue>(services => services.GetRequiredService<BackgroundEmailQueue>());
-builder.Services.AddHostedService<EmailDispatchWorker>();
-
-// Default System.Text.Json settings use camelCase, matching the property names the React frontend reads.
-builder.Services.AddControllers(options =>
-        options.Conventions.Add(new RouteTokenTransformerConvention(new LowercaseParameterTransformer())))
-    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter()));
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new OpenApiInfo
+    // Fail at startup, in every environment, when a registration is missing or a scoped service
+    // is captured by a singleton, instead of on the first request that resolves it.
+    builder.Host.UseDefaultServiceProvider(options =>
     {
-        Title = "Khazar Storefront API",
-        Version = "v1",
-        Description = "Catalog and checkout endpoints for the Khazar React storefront. " +
-                      "Errors are returned as RFC 7807 ProblemDetails with a traceId for support requests.",
+        options.ValidateOnBuild = true;
+        options.ValidateScopes = true;
     });
 
-    // Operation ids come from the C# method name without the "Async" suffix (GetProducts, CreateOrder, ...),
-    // so Swagger UI and generated clients get stable, readable names.
-    options.CustomOperationIds(api =>
-        api.ActionDescriptor is ControllerActionDescriptor action ? TrimAsyncSuffix(action.MethodInfo.Name) : null);
+    // Composition root: each layer registers its own services.
+    // Application: product, order and auth use cases.
+    builder.Services.AddApplicationServices();
 
-    // "Authorize" button in Swagger UI: paste the accessToken from POST /api/auth/login.
-    var bearerScheme = new OpenApiSecurityScheme
+    // Infrastructure: DbContext, repositories, JWT issuing, password hashing, email and the NexusERP client.
+    builder.Services.AddInfrastructureServices(builder.Configuration);
+
+    // JWT bearer validation, the current-user accessor and per-IP limits on the auth and public form endpoints.
+    builder.Services.AddJwtAuthentication();
+    builder.Services.AddAuthRateLimiting();
+
+    // /api/admin endpoints: signed-in users whose email is listed in "Admin:Emails".
+    builder.Services.AddPlatformAdminAuthorization(builder.Configuration);
+
+    // Placed orders are pushed to NexusERP by a background worker, so checkout never waits on the ERP.
+    builder.Services.AddSingleton<Khazar.WebAPI.Storage.ImageFileStore>();
+    builder.Services.AddSingleton<OrderErpSyncQueue>();
+    builder.Services.AddSingleton<IOrderErpSyncQueue>(services => services.GetRequiredService<OrderErpSyncQueue>());
+    builder.Services.AddHostedService<OrderErpSyncWorker>();
+    builder.Services.AddHostedService<OrderErpSyncSweeper>();
+
+    // Newsletter welcome, order confirmation and password reset emails are sent by a background worker with retries,
+    // so a slow or failing mail server never delays or fails the operation that triggered them.
+    builder.Services.AddSingleton<BackgroundEmailQueue>();
+    builder.Services.AddSingleton<IBackgroundEmailQueue>(services => services.GetRequiredService<BackgroundEmailQueue>());
+    builder.Services.AddHostedService<EmailDispatchWorker>();
+
+    // Default System.Text.Json settings use camelCase, matching the property names the React frontend reads.
+    builder.Services.AddControllers(options =>
+            options.Conventions.Add(new RouteTokenTransformerConvention(new LowercaseParameterTransformer())))
+        .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter()));
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(options =>
     {
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        Description = "Access token from POST /api/auth/login or /api/auth/verify-email.",
-        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" },
-    };
-    options.AddSecurityDefinition("Bearer", bearerScheme);
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement { [bearerScheme] = [] });
+        options.SwaggerDoc("v1", new OpenApiInfo
+        {
+            Title = "Khazar Storefront API",
+            Version = "v1",
+            Description = "Catalog and checkout endpoints for the Khazar React storefront. " +
+                          "Errors are returned as RFC 7807 ProblemDetails with a traceId for support requests.",
+        });
 
-    // Controller XML comments become operation descriptions in Swagger UI.
-    var xmlFile = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
-    if (File.Exists(xmlFile))
-        options.IncludeXmlComments(xmlFile);
-});
+        // Operation ids come from the C# method name without the "Async" suffix (GetProducts, CreateOrder, ...),
+        // so Swagger UI and generated clients get stable, readable names.
+        options.CustomOperationIds(api =>
+            api.ActionDescriptor is ControllerActionDescriptor action ? TrimAsyncSuffix(action.MethodInfo.Name) : null);
 
-// Error handling: every error response is ProblemDetails JSON with a traceId.
-builder.Services.AddProblemDetails(options =>
-    options.CustomizeProblemDetails = context =>
-        context.ProblemDetails.Extensions.TryAdd(
-            "traceId", System.Diagnostics.Activity.Current?.Id ?? context.HttpContext.TraceIdentifier));
-builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+        // "Authorize" button in Swagger UI: paste the accessToken from POST /api/auth/login.
+        var bearerScheme = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "Access token from POST /api/auth/login or /api/auth/verify-email.",
+            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" },
+        };
+        options.AddSecurityDefinition("Bearer", bearerScheme);
+        options.AddSecurityRequirement(new OpenApiSecurityRequirement { [bearerScheme] = [] });
 
-builder.Services.AddFrontendCors(builder.Configuration);
+        // Controller XML comments become operation descriptions in Swagger UI.
+        var xmlFile = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
+        if (File.Exists(xmlFile))
+            options.IncludeXmlComments(xmlFile);
+    });
 
-// Health checks: "live" means the process is up, "ready" means it can serve traffic (database reachable).
-builder.Services.Configure<SystemHealthCheckOptions>(builder.Configuration.GetSection(SystemHealthCheckOptions.SectionName));
-builder.Services.AddHealthChecks()
-    .AddCheck<SystemHealthCheck>("system", tags: [LiveTag])
-    .AddCheck<DatabaseHealthCheck>("database", failureStatus: HealthStatus.Unhealthy, tags: [ReadyTag]);
+    // Error handling: every error response is ProblemDetails JSON with a traceId.
+    builder.Services.AddProblemDetails(options =>
+        options.CustomizeProblemDetails = context =>
+            context.ProblemDetails.Extensions.TryAdd(
+                "traceId", System.Diagnostics.Activity.Current?.Id ?? context.HttpContext.TraceIdentifier));
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-var app = builder.Build();
+    builder.Services.AddFrontendCors(builder.Configuration);
 
-// Outermost: converts exceptions thrown anywhere below into ProblemDetails.
-app.UseExceptionHandler();
+    // Health checks: "live" means the process is up, "ready" means it can serve traffic (database reachable).
+    builder.Services.Configure<SystemHealthCheckOptions>(builder.Configuration.GetSection(SystemHealthCheckOptions.SectionName));
+    builder.Services.AddHealthChecks()
+        .AddCheck<SystemHealthCheck>("system", tags: [LiveTag])
+        .AddCheck<DatabaseHealthCheck>("database", failureStatus: HealthStatus.Unhealthy, tags: [ReadyTag]);
 
-// Gives body-less error responses (unknown route 404, 405, 415) the same ProblemDetails shape.
-app.UseStatusCodePages();
+    var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(options => options.DocumentTitle = "Khazar Storefront API");
+    // One line per request (method, path, status, duration) in the log. Ahead of the exception handler, so it records the
+    // status the handler set instead of logging the exception a second time; it never changes a response.
+    app.UseSerilogRequestLogging();
 
-    await InitializeDatabaseAsync(app);
+    // Converts exceptions thrown anywhere below into ProblemDetails.
+    app.UseExceptionHandler();
+
+    // Gives body-less error responses (unknown route 404, 405, 415) the same ProblemDetails shape.
+    app.UseStatusCodePages();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI(options => options.DocumentTitle = "Khazar Storefront API");
+
+        await InitializeDatabaseAsync(app);
+    }
+
+    // CORS runs before the HTTPS redirect: a redirected preflight (OPTIONS) is rejected by browsers.
+    app.UseCors(FrontendCorsExtensions.PolicyName);
+
+    // wwwroot/images: product and content photos. File names never change, so browsers may cache them for a long time.
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        OnPrepareResponse = context =>
+            context.Context.Response.Headers.CacheControl = "public,max-age=2592000,immutable",
+    });
+
+    // Not in Development: the storefront calls http://localhost:5293, and under the "https" launch profile a
+    // redirect to https://localhost:7169 is cross-origin, so the browser resends with "Origin: null" and CORS fails.
+    if (!app.Environment.IsDevelopment())
+        app.UseHttpsRedirection();
+    app.UseRateLimiter();
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapControllers();
+
+    // Full report (system + database): 200 when Healthy or Degraded, 503 when Unhealthy.
+    app.MapHealthChecks("/health", new HealthCheckOptions
+    {
+        ResponseWriter = HealthCheckResponseWriter.WriteAsync,
+    });
+
+    // Liveness only: never touches the database, so a database outage does not get the process restarted.
+    app.MapHealthChecks("/health/live", new HealthCheckOptions
+    {
+        Predicate = registration => registration.Tags.Contains(LiveTag),
+        ResponseWriter = HealthCheckResponseWriter.WriteAsync,
+    });
+
+    LogCorsConfiguration(app);
+    LogEmailDelivery(app);
+
+    await app.RunAsync();
 }
-
-// CORS runs before the HTTPS redirect: a redirected preflight (OPTIONS) is rejected by browsers.
-app.UseCors(FrontendCorsExtensions.PolicyName);
-
-// wwwroot/images: product and content photos. File names never change, so browsers may cache them for a long time.
-app.UseStaticFiles(new StaticFileOptions
+catch (HostAbortedException)
 {
-    OnPrepareResponse = context =>
-        context.Context.Response.Headers.CacheControl = "public,max-age=2592000,immutable",
-});
-
-// Not in Development: the storefront calls http://localhost:5293, and under the "https" launch profile a
-// redirect to https://localhost:7169 is cross-origin, so the browser resends with "Origin: null" and CORS fails.
-if (!app.Environment.IsDevelopment())
-    app.UseHttpsRedirection();
-app.UseRateLimiter();
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-
-// Full report (system + database): 200 when Healthy or Degraded, 503 when Unhealthy.
-app.MapHealthChecks("/health", new HealthCheckOptions
+    hostAborted = true;
+    throw;
+}
+catch (Exception exception)
 {
-    ResponseWriter = HealthCheckResponseWriter.WriteAsync,
-});
-
-// Liveness only: never touches the database, so a database outage does not get the process restarted.
-app.MapHealthChecks("/health/live", new HealthCheckOptions
+    Log.Fatal(exception, "Khazar WebAPI stopped: it failed to start or crashed while running.");
+    Environment.ExitCode = 1;
+}
+finally
 {
-    Predicate = registration => registration.Tags.Contains(LiveTag),
-    ResponseWriter = HealthCheckResponseWriter.WriteAsync,
-});
-
-LogCorsConfiguration(app);
-
-await app.RunAsync();
+    if (!hostAborted)
+        Log.CloseAndFlush();
+}
 
 // Development only: applies pending migrations (creating the database if it was dropped), seeds the catalog
 // and the storefront content so the frontend has data to work with, and creates the SuperAdmin account if it does not exist. Migrations, not EnsureCreated: a database created by EnsureCreated has
@@ -203,4 +241,16 @@ static void LogCorsConfiguration(WebApplication app)
             FrontendCorsExtensions.AllowedOriginsKey);
     else
         app.Logger.LogInformation("CORS enabled for origins: {Origins}.", string.Join(", ", origins));
+}
+
+// With Smtp:DeliveryMethod = Log no email (verification code, password reset, ...) leaves the server, so say so at startup.
+static void LogEmailDelivery(WebApplication app)
+{
+    var smtp = app.Services.GetRequiredService<SmtpOptions>();
+
+    if (smtp.DeliveryMethod == EmailDeliveryMethod.Log)
+        app.Logger.LogWarning("Email delivery is disabled (Smtp:DeliveryMethod = Log): emails are written to the log, not sent.");
+    else
+        app.Logger.LogInformation("Email delivery: SMTP {Host}:{Port} (SSL {EnableSsl}) as {FromEmail}.",
+            smtp.Host, smtp.Port, smtp.EnableSsl, smtp.FromEmail);
 }

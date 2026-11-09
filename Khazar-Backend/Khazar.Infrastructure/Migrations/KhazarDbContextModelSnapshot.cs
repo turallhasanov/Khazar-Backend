@@ -321,6 +321,10 @@ namespace Khazar.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("CustomerPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("OrderNumber")
                         .IsRequired()
                         .HasMaxLength(16)

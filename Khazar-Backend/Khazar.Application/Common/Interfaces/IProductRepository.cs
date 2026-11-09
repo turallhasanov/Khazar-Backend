@@ -25,6 +25,12 @@ public interface IProductRepository : IAsyncRepository<Product>
     /// <summary>Tracked products (archived included) that have a variant with one of the upper-case SKUs.</summary>
     Task<IReadOnlyList<Product>> GetByVariantSkusAsync(IReadOnlyCollection<string> skus, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The oldest active product with exactly this name (case-insensitive), tracked and with its variants, or null.
+    /// NexusERP variants named "Name (Size)" are gathered under that one product.
+    /// </summary>
+    Task<Product?> GetActiveByNameAsync(string name, CancellationToken cancellationToken = default);
+
     Task<bool> SlugExistsAsync(string slug, Guid? exceptProductId = null, CancellationToken cancellationToken = default);
 
     Task<bool> SkuExistsAsync(string sku, CancellationToken cancellationToken = default);

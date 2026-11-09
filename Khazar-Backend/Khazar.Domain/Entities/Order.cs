@@ -10,6 +10,9 @@ public class Order : BaseEntity
     public const string OrderNumberPrefix = "KHZ-";
     private const int OrderNumberLength = 5;
 
+    /// <summary>Column length; also NexusERP's limit for a retail customer's phone.</summary>
+    public const int MaxPhoneLength = 50;
+
     // Ambiguous characters (0/O, 1/I) are excluded.
     private const string OrderNumberAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -18,6 +21,9 @@ public class Order : BaseEntity
     public string OrderNumber { get; private set; } = default!;
     public string CustomerName { get; private set; } = default!;
     public string CustomerEmail { get; private set; } = default!;
+
+    /// <summary>Shopper's phone as typed at checkout; null for orders placed before it was kept.</summary>
+    public string? CustomerPhone { get; private set; }
 
     /// <summary>The signed-in customer who placed the order; null for guest checkouts.</summary>
     public Guid? UserId { get; private set; }
@@ -30,11 +36,14 @@ public class Order : BaseEntity
     // Required by ORMs
     private Order() { }
 
-    public Order(string customerName, string customerEmail, Address shippingAddress, Guid? userId = null)
+    public Order(string customerName, string customerEmail, Address shippingAddress, Guid? userId = null, string? customerPhone = null)
     {
         OrderNumber = GenerateOrderNumber();
         CustomerName = Guard.NotEmpty(customerName, nameof(CustomerName));
         CustomerEmail = Guard.Email(customerEmail, nameof(CustomerEmail));
+        CustomerPhone = string.IsNullOrWhiteSpace(customerPhone) ? null : customerPhone.Trim();
+        if (CustomerPhone is { Length: > MaxPhoneLength })
+            throw new DomainException($"Phone cannot be longer than {MaxPhoneLength} characters.");
         UserId = userId is { } id ? Guard.NotEmpty(id, nameof(UserId)) : null;
         ShippingAddress = shippingAddress ?? throw new DomainException("Shipping address is required.");
         Status = OrderStatus.Pending;

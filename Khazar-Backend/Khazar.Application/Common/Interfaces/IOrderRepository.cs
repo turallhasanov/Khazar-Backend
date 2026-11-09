@@ -18,6 +18,13 @@ public interface IOrderRepository : IAsyncRepository<Order>
     /// <summary>Finds an order by its public number (KHZ-XXXXX format).</summary>
     Task<Order?> GetByNumberAsync(string orderNumber, CancellationToken cancellationToken = default);
 
+    /// <summary>The user's orders with their lines, newest first.</summary>
+    Task<IReadOnlyList<Order>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Cover photo of each given product that still exists.</summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetCoverImagesAsync(
+        IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken = default);
+
     /// <summary>Ids of orders still Pending that were placed before <paramref name="createdBeforeUtc"/>, oldest first.</summary>
     Task<IReadOnlyList<Guid>> GetPendingIdsAsync(
         DateTime createdBeforeUtc, int limit, CancellationToken cancellationToken = default);
